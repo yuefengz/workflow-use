@@ -2,6 +2,7 @@ import base64
 import json
 import logging
 import re
+from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
 from langchain_core.exceptions import OutputParserException
@@ -36,7 +37,10 @@ class BuilderService:
 
         # Configure the LLM to return structured output based on the Pydantic model
         try:
-            self.llm_structured = llm.with_structured_output(WorkflowDefinitionSchema)
+            # Specify method="function_calling" for better compatibility
+            self.llm_structured = llm.with_structured_output(
+                WorkflowDefinitionSchema, method="function_calling"
+            )
         except NotImplementedError:
             logger.warning(
                 "LLM does not support structured output natively. Falling back."
@@ -164,7 +168,7 @@ class BuilderService:
     def build_workflow(
         self,
         input_workflow: WorkflowDefinitionSchema,
-        user_goal: Optional[str] = None,
+        user_goal: str,
         use_screenshots: bool = False,
         max_images: int = 20,
     ) -> WorkflowDefinitionSchema:
@@ -317,3 +321,19 @@ class BuilderService:
 
         # Return the workflow data object directly
         return workflow_data
+
+    # path handlers
+    def build_workflow_from_path(
+        self, path: Path, user_goal: str
+    ) -> WorkflowDefinitionSchema:
+        """Build a workflow from a JSON file path."""
+        with open(path, "r") as f:
+            workflow_data = json.load(f)
+
+        workflow_data_schema = WorkflowDefinitionSchema.model_validate(workflow_data)
+        return self.build_workflow(workflow_data_schema, user_goal)
+
+    def save_workflow_to_path(self, workflow: WorkflowDefinitionSchema, path: Path):
+        """Save a workflow to a JSON file path."""
+        with open(path, "w") as f:
+            json.dump(workflow.model_dump(mode="json"), f, indent=2)
