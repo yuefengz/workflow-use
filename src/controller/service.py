@@ -18,15 +18,46 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_ACTION_TIMEOUT_MS = 1000
 
+# List of default actions from browser_use.controller.service.Controller to disable
+# todo: come up with a better way to filter out the actions (filter IN the actions would be much nicer in this case)
+DISABLED_DEFAULT_ACTIONS = [
+    "done",
+    "search_google",
+    "go_to_url",
+    "go_back",
+    "wait",
+    "click_element_by_index",
+    "input_text",
+    "save_pdf",
+    "switch_tab",
+    "open_tab",
+    "close_tab",
+    "extract_content",
+    "scroll_down",
+    "scroll_up",
+    "send_keys",
+    "scroll_to_text",
+    "get_dropdown_options",
+    "select_dropdown_option",
+    "drag_drop",
+    "get_sheet_contents",
+    "select_cell_or_range",
+    "get_range_contents",
+    "clear_selected_range",
+    "input_selected_cell_text",
+    "update_range_contents",
+]
+
 
 class WorkflowController(Controller):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        # Pass the list of actions to exclude to the base class constructor
+        super().__init__(*args, exclude_actions=DISABLED_DEFAULT_ACTIONS, **kwargs)
         self.__register_actions()
 
     def __register_actions(self):
         # Navigate to URL ------------------------------------------------------------
-        @self.registry.action("Navigate to URL", param_model=NavigationAction)
+        @self.registry.action("Manually navigate to URL", param_model=NavigationAction)
         async def navigation(
             params: NavigationAction, browser: BrowserContext
         ) -> ActionResult:

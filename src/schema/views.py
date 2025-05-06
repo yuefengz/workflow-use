@@ -148,6 +148,9 @@ WorkflowStep = Union[
     # from Browser Use library
 ]
 
+allowed_controller_actions = [
+]
+
 
 # --- Top-Level Workflow Definition File ---
 # Uses the Union WorkflowStep type

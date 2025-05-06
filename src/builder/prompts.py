@@ -12,26 +12,27 @@ Input Steps Format:
 
 Follow these rules when generating the output JSON:
 1. Top-level keys (in order): "name", "description", "input_schema" (optional), "steps" and "version".
-   • "input_schema" – if present – MUST follow JSON-Schema draft-7 subset semantics:
+   - "input_schema" – if present – MUST follow JSON-Schema draft-7 subset semantics:
        {{
          "type": "object", 
          "properties": {{ "foo": {{"type": "string"}}, … }},
          "required": ["foo", …]
        }}
-   • Omit "input_schema" entirely if the workflow is fully deterministic and requires
+   - Omit "input_schema" entirely if the workflow is fully deterministic and requires
      no external parameters.
 2. "steps" is an array of dictionaries executed sequentially.
-   • Each dictionary MUST include a `"type"` field.
-   • **Agent events** → `"type": "agent"` **MUST** also include a `"task"`
+   - Each dictionary MUST include a `"type"` field.
+   - **Agent events** → `"type": "agent"` **MUST** also include a `"task"`
      string that clearly explains what the agent should achieve **from the
      user's point of view**. A short `"description"` of *why* the step
      requires agent reasoning is encouraged, plus an optional `"max_steps"`
      integer (defaults to 5 if omitted).
-   • **Deterministic events** → keep the original recorder event structure. The
+   - **Deterministic events** → keep the original recorder event structure. The
      value of `"type"` MUST match **exactly** one of the available action
      names listed below; all additional keys are interpreted as parameters for
      that action.
-   • For each step you create also add a very short description that describes what the step tries to achieve.  
+   - For each step you create also add a very short description that describes what the step tries to achieve.  
+   - sometimes navigating to a certain url is a side effects of another action (click, submit, key press, etc.). In that case choose either (if you think navigating to the url is the best option) or don't add the step at all.
 3. When referencing workflow inputs inside event parameters or agent tasks use
    the placeholder syntax `{{input_name}}` (e.g. "cssSelector": "#msg-{{row}}")
    – do *not* use any prefix like "input.". Decide the inputs dynamically based on the user's

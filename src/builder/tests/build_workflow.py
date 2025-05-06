@@ -16,7 +16,8 @@ def test_build_workflow_from_path():
     """
     path = Path(__file__).parent / "tmp" / "recording.json"
     workflow_definition = builder_service.build_workflow_from_path(
-        path, "go to apple.com and extract the price of the iphone"
+        path,
+        "go to apple.com and extract the price of the iphone XY (where XY is a variable)",
     )
 
     print(workflow_definition)
