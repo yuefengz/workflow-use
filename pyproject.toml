@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "browser-use>=0.1.45",
+    "textual>=3.2.0",
 ]
 
 [tool.uv]

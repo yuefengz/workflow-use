@@ -3791,6 +3791,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "browser-use" },
+    { name = "textual" },
 ]
 
 [package.dev-dependencies]
@@ -3799,7 +3800,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "browser-use", specifier = ">=0.1.45" }]
+requires-dist = [
+    { name = "browser-use", specifier = ">=0.1.45" },
+    { name = "textual", specifier = ">=3.2.0" },
+]
 
 [package.metadata.requires-dev]
 dev = [{ name = "ruff", specifier = ">=0.11.8" }]
