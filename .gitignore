@@ -188,5 +188,3 @@ data/
 # For Config Files (Current Settings)
 .config.pkl
 *.pdf
-
-workflow
