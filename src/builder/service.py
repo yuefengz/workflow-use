@@ -165,7 +165,7 @@ class BuilderService:
                 f"LLM output could not be parsed into a valid Workflow schema. Error: {e}"
             ) from e
 
-    def build_workflow(
+    async def build_workflow(
         self,
         input_workflow: WorkflowDefinitionSchema,
         user_goal: str,
@@ -282,7 +282,7 @@ class BuilderService:
             if hasattr(
                 self.llm_structured, "output_schema"
             ):  # Check if it seems like structured output model
-                llm_response = self.llm_structured.invoke(
+                llm_response = await self.llm_structured.ainvoke(
                     [HumanMessage(content=cast(Any, vision_messages))]
                 )
                 # If structured output worked, llm_response is the Pydantic object
@@ -294,7 +294,7 @@ class BuilderService:
                     workflow_data = self._parse_llm_output_to_workflow(str(content))
             else:
                 # Fallback to basic LLM call and manual parsing
-                llm_response = self.llm_structured.invoke(
+                llm_response = await self.llm_structured.ainvoke(
                     [HumanMessage(content=cast(Any, vision_messages))]
                 )
                 llm_content = str(
@@ -323,7 +323,7 @@ class BuilderService:
         return workflow_data
 
     # path handlers
-    def build_workflow_from_path(
+    async def build_workflow_from_path(
         self, path: Path, user_goal: str
     ) -> WorkflowDefinitionSchema:
         """Build a workflow from a JSON file path."""
@@ -331,9 +331,11 @@ class BuilderService:
             workflow_data = json.load(f)
 
         workflow_data_schema = WorkflowDefinitionSchema.model_validate(workflow_data)
-        return self.build_workflow(workflow_data_schema, user_goal)
+        return await self.build_workflow(workflow_data_schema, user_goal)
 
-    def save_workflow_to_path(self, workflow: WorkflowDefinitionSchema, path: Path):
+    async def save_workflow_to_path(
+        self, workflow: WorkflowDefinitionSchema, path: Path
+    ):
         """Save a workflow to a JSON file path."""
         with open(path, "w") as f:
             json.dump(workflow.model_dump(mode="json"), f, indent=2)

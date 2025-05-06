@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 
 # Ensure langchain-openai is installed and OPENAI_API_KEY is set
@@ -10,12 +11,12 @@ llm_instance = ChatOpenAI(model="gpt-4o")  # Or your preferred model
 builder_service = BuilderService(llm=llm_instance)
 
 
-def test_build_workflow_from_path():
+async def test_build_workflow_from_path():
     """
     Tests that the workflow is built correctly from a JSON file path.
     """
     path = Path(__file__).parent / "tmp" / "recording.json"
-    workflow_definition = builder_service.build_workflow_from_path(
+    workflow_definition = await builder_service.build_workflow_from_path(
         path,
         "go to apple.com and extract the price of the iphone XY (where XY is a variable)",
     )
@@ -23,8 +24,8 @@ def test_build_workflow_from_path():
     print(workflow_definition)
 
     output_path = path.with_suffix(".workflow.json")
-    builder_service.save_workflow_to_path(workflow_definition, output_path)
+    await builder_service.save_workflow_to_path(workflow_definition, output_path)
 
 
 if __name__ == "__main__":
-    test_build_workflow_from_path()
+    asyncio.run(test_build_workflow_from_path())
