@@ -1,6 +1,6 @@
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Dict, List, Literal, Optional, Union
 
-from pydantic import BaseModel, Field, RootModel
+from pydantic import BaseModel, Field
 
 
 # --- Input Schema Definition ---
@@ -29,19 +29,22 @@ class BaseWorkflowStep(BaseModel):
     output: Optional[str] = Field(
         None, description="Context key to store step output under."
     )
-    # Informational fields often included from recordings
+    # Allow other fields captured from raw events but not explicitly modeled
+    model_config = {"extra": "allow"}
+
+
+# --- Timestamped Step Mixin (for deterministic actions) ---
+class TimestampedWorkflowStep(BaseWorkflowStep):
     timestamp: Optional[int] = Field(
         None, description="Timestamp from recording (informational)."
     )
     tabId: Optional[int] = Field(
         None, description="Browser tab ID from recording (informational)."
     )
-    # Allow other fields captured from raw events but not explicitly modeled
-    model_config = {"extra": "allow"}
 
 
 # --- Agent Step ---
-class AgentWorkflowStep(BaseWorkflowStep):
+class AgentTaskWorkflowStep(BaseWorkflowStep):
     type: Literal["agent"]
     task: str = Field(
         ..., description="The objective or task description for the agent."
@@ -57,7 +60,7 @@ class AgentWorkflowStep(BaseWorkflowStep):
 
 
 # Actions from src/workflows/controller/service.py & Examples
-class NavigationStep(BaseWorkflowStep):
+class NavigationStep(TimestampedWorkflowStep):
     """Navigates using the 'navigation' action (likely maps to go_to_url)."""
 
     type: Literal["navigation"]  # As seen in examples
@@ -66,7 +69,7 @@ class NavigationStep(BaseWorkflowStep):
     )
 
 
-class ClickStep(BaseWorkflowStep):
+class ClickStep(TimestampedWorkflowStep):
     """Clicks an element using 'click' (maps to workflow controller's click)."""
 
     type: Literal["click"]  # As seen in examples
@@ -80,7 +83,7 @@ class ClickStep(BaseWorkflowStep):
     )
 
 
-class InputStep(BaseWorkflowStep):
+class InputStep(TimestampedWorkflowStep):
     """Inputs text using 'input' (maps to workflow controller's input)."""
 
     type: Literal["input"]  # As seen in examples
@@ -92,7 +95,7 @@ class InputStep(BaseWorkflowStep):
     elementTag: Optional[str] = Field(None, description="HTML tag (informational).")
 
 
-class SelectChangeStep(BaseWorkflowStep):
+class SelectChangeStep(TimestampedWorkflowStep):
     """Selects a dropdown option using 'select_change' (maps to workflow controller's select_change)."""
 
     type: Literal[
@@ -108,7 +111,7 @@ class SelectChangeStep(BaseWorkflowStep):
     elementTag: Optional[str] = Field(None, description="HTML tag (informational).")
 
 
-class KeyPressStep(BaseWorkflowStep):
+class KeyPressStep(TimestampedWorkflowStep):
     """Presses a key using 'key_press' (maps to workflow controller's key_press)."""
 
     type: Literal["key_press"]  # As seen in examples
@@ -118,7 +121,7 @@ class KeyPressStep(BaseWorkflowStep):
     elementTag: Optional[str] = Field(None, description="HTML tag (informational).")
 
 
-class ScrollStep(BaseWorkflowStep):
+class ScrollStep(TimestampedWorkflowStep):
     """Scrolls the page using 'scroll' (maps to workflow controller's scroll)."""
 
     type: Literal["scroll"]  # Assumed type for workflow controller's scroll
@@ -126,30 +129,30 @@ class ScrollStep(BaseWorkflowStep):
     scrollY: int = Field(..., description="Vertical scroll pixels.")
 
 
-class ExtractContentStep(BaseWorkflowStep):
-    type: Literal["extract_content"]
-    goal: str = Field(..., description="Goal for the content extraction LLM.")
-    should_strip_link_urls: Optional[bool] = Field(default=False)
 
 
 # --- Union of all possible step types ---
 # This Union defines what constitutes a valid step in the "steps" list.
-WorkflowStep = Union[
-    # Pure workflow
+DeterministicWorkflowStep = Union[
     NavigationStep,
     ClickStep,
     InputStep,
     SelectChangeStep,
     KeyPressStep,
     ScrollStep,
-    # Agentic
-    AgentWorkflowStep,
-    ExtractContentStep,
-    # from Browser Use library
 ]
 
-allowed_controller_actions = [
+AgenticWorkflowStep = AgentTaskWorkflowStep
+
+
+WorkflowStep = Union[
+    # Pure workflow
+    DeterministicWorkflowStep,
+    # Agentic
+    AgenticWorkflowStep,
 ]
+
+allowed_controller_actions = []
 
 
 # --- Top-Level Workflow Definition File ---
