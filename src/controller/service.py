@@ -23,7 +23,7 @@ DEFAULT_ACTION_TIMEOUT_MS = 1000
 DISABLED_DEFAULT_ACTIONS = [
     "done",
     "search_google",
-    "go_to_url",
+    # "go_to_url", I am using this action from the main controller to avoid duplication
     "go_back",
     "wait",
     "click_element_by_index",

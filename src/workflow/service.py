@@ -5,7 +5,7 @@ import json
 import json as _json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 
 from browser_use.agent.service import Agent
 from browser_use.agent.views import ActionResult, AgentHistoryList
@@ -20,7 +20,8 @@ from pydantic import BaseModel, create_model
 from src.schema.views import (
     WorkflowDefinitionSchema,
     WorkflowStep,
-    WorkflowInputSchemaDefinition,
+    DeterministicWorkflowStep,
+    AgenticWorkflowStep,
 )
 
 from src.workflow.prompts import WORKFLOW_FALLBACK_PROMPT_TEMPLATE
@@ -58,6 +59,7 @@ class Workflow:
         self.name = self.schema.name
         self.description = self.schema.description
         self.version = self.schema.version
+        self.steps = self.schema.steps
 
         self.controller = controller or WorkflowController()
         self.browser = browser or Browser()
@@ -70,45 +72,18 @@ class Workflow:
 
         self.context: dict[str, Any] = {}
 
-        self.steps: List[Dict[str, Any]] = self._load_steps_from_schema()
         self.inputs_def: Dict[str, Any] = (
             self.schema.input_schema.model_dump() if self.schema.input_schema else {}
         )
         self._input_model: type[BaseModel] = self._build_input_model()
 
-    # ---------------------------------------------------------------------
-    # Unified config loader (JSON workflow or raw event log) -> Now from Schema
-    # ---------------------------------------------------------------------
-
-    def _load_steps_from_schema(self) -> List[Dict[str, Any]]:
-        """Convert WorkflowStep models from the schema into dictionaries for internal use."""
-
-        steps_dict_list: List[Dict[str, Any]] = []
-        for step_model in self.schema.steps:  # step_model is WorkflowStep
-            # Convert the WorkflowStep Pydantic model to a dictionary
-            # Use exclude_none=True to avoid adding keys with None values if not needed
-            step_dict = step_model.model_dump(exclude_none=True)
-
-            # Ensure essential keys potentially used downstream exist, even if None/empty,
-            # if they aren't guaranteed by the model dump and schema
-            step_dict.setdefault(
-                "type", "deterministic"
-            )  # Default type if not specified
-            step_dict.setdefault("description", f"Step {len(steps_dict_list) + 1}")
-            step_dict.setdefault("params", {})
-
-            # Scrub screenshot if present (assuming it's not needed for execution)
-            if "screenshot" in step_dict:
-                step_dict["screenshot"] = ""
-
-            steps_dict_list.append(step_dict)
-        return steps_dict_list
-
-    async def _run_deterministic_step(self, step: Dict[str, Any]) -> ActionResult:
+    async def _run_deterministic_step(
+        self, step: DeterministicWorkflowStep
+    ) -> ActionResult:
         """Execute a deterministic (controller) action based on step dictionary."""
         # Assumes WorkflowStep for deterministic type has 'action' and 'params' keys
-        action_name: str = step["action"]  # Expect 'action' key for deterministic steps
-        params: Dict[str, Any] = step.get("params", {})  # Use params if present
+        action_name: str = step.type  # Expect 'action' key for deterministic steps
+        params: Dict[str, Any] = step.model_dump()  # Use params if present
 
         ActionModel = self.controller.registry.create_action_model(
             include_actions=[action_name]
@@ -122,29 +97,27 @@ class Workflow:
             raise RuntimeError(f"Deterministic action '{action_name}' failed: {str(e)}")
 
     async def _run_agent_step(
-        self, step: Dict[str, Any]
+        self, step: AgenticWorkflowStep
     ) -> AgentHistoryList | dict[str, Any]:
         """Spin-up an Agent based on step dictionary."""
         if self.llm is None:
             raise ValueError("An 'llm' instance must be supplied for agent-based steps")
 
-        # Assumes WorkflowStep for agent type has 'task' and optional 'max_steps'
-        task: str = step["task"]  # Expect 'task' key for agent steps
-        max_steps: int = step.get("max_steps", 5)  # Use max_steps if present
+        task: str = step.task
+        max_steps: int = step.max_steps or 5
 
         agent = Agent(
             task=task,
             llm=self.llm,
             browser=self.browser,
             browser_context=self.browser_context,
-            controller=self.controller,
             use_vision=True,  # Consider making this configurable via WorkflowStep schema
         )
         return await agent.run(max_steps=max_steps)
 
     async def _fallback_to_agent(
         self,
-        step_resolved: Dict[str, Any],
+        step_resolved: WorkflowStep,
         step_index: int,
         error: Exception | str | None = None,
     ) -> AgentHistoryList | dict[str, Any]:
@@ -153,11 +126,11 @@ class Workflow:
             raise ValueError(
                 "Cannot fall back to agent: An 'llm' instance must be supplied"
             )
-
+        print("Workflow steps:", step_resolved)
         # Extract details from the failed step dictionary
-        failed_action_name = step_resolved.get("action", "unknown_action")
-        failed_params = step_resolved.get("params", {})
-        step_description = step_resolved.get("description", "No description provided")
+        failed_action_name = step_resolved.type
+        failed_params = step_resolved.model_dump()
+        step_description = step_resolved.description
         error_msg = str(error) if error else "Unknown error"
         total_steps = len(self.steps)
         fail_details = (
@@ -167,21 +140,16 @@ class Workflow:
 
         # Build workflow overview using the stored dictionaries
         workflow_overview_lines: list[str] = []
-        for i, st_dict in enumerate(self.steps):
+        for idx, step in enumerate(self.steps):
             # Use description, fallback to task/action/type
-            desc = (
-                st_dict.get("description")
-                or st_dict.get("task")
-                or st_dict.get("action")
-                or st_dict.get("type", "Unknown Type")
-            )
-            step_type_info = st_dict.get("type", "deterministic")
-            details = st_dict.get("action") or st_dict.get("task")
+            desc = step.description or ""
+            step_type_info = step.type
+            details = step.model_dump() 
             workflow_overview_lines.append(
-                f"  {i + 1}. ({step_type_info}) {desc} - {details}"
+                f"  {idx + 1}. ({step_type_info}) {desc} - {details}"
             )
         workflow_overview = "\n".join(workflow_overview_lines)
-
+        print(workflow_overview)
         fallback_task = WORKFLOW_FALLBACK_PROMPT_TEMPLATE.format(
             step_index=step_index + 1,
             total_steps=len(self.steps),
@@ -191,10 +159,13 @@ class Workflow:
         logger.info(f"Agent fallback task: {fallback_task}")
 
         # Prepare agent step config based on the failed step, adding task
-        agent_step_config = step_resolved.copy()
-        agent_step_config["type"] = "agent"
-        agent_step_config["task"] = fallback_task
-        agent_step_config.setdefault("max_steps", 5)  # Add default max_steps if missing
+        agent_step_config = AgenticWorkflowStep(
+            type="agent",
+            task=fallback_task,
+            max_steps=5,
+            output=None,
+            description="Fallback agent to handle step failure",
+        )
 
         return await self._run_agent_step(agent_step_config)
 
@@ -216,24 +187,59 @@ class Workflow:
 
         String placeholders are written using Python format syntax, e.g. "{index}".
         """
-
         if isinstance(data, str):
             try:
-                return data.format(**self.context)
+                # Only attempt to format if placeholder syntax is likely present
+                if "{" in data and "}" in data:
+                    formatted_data = data.format(**self.context)
+                    return formatted_data
+                return data  # No placeholders, return as is
             except KeyError:
-                # variable not yet available – leave as-is
+                # A key in the placeholder was not found in the context.
+                # Return the original string as per previous behavior.
                 return data
-        elif isinstance(data, dict):
-            return {k: self._resolve_placeholders(v) for k, v in data.items()}
+
+        # TODO: This next things are not really supported atm, we'll need to to do it in the future.
         elif isinstance(data, list):
-            return [self._resolve_placeholders(v) for v in data]
+            new_list = []
+            changed = False
+            for item in data:
+                resolved_item = self._resolve_placeholders(item)
+                if resolved_item is not item:
+                    changed = True
+                new_list.append(resolved_item)
+            return new_list if changed else data
+        elif isinstance(data, dict):
+            new_dict = {}
+            changed = False
+            for key, value in data.items():
+                resolved_value = self._resolve_placeholders(value)
+                if resolved_value is not value:
+                    changed = True
+                new_dict[key] = resolved_value
+            return new_dict if changed else data
+        elif isinstance(data, BaseModel):  # Handle Pydantic models
+            update_dict = {}
+            model_changed = False
+            for field_name in data.model_fields:  # Iterate using model_fields keys
+                original_value = getattr(data, field_name)
+                resolved_value = self._resolve_placeholders(original_value)
+                if resolved_value is not original_value:
+                    model_changed = True
+                update_dict[field_name] = resolved_value
+
+            if model_changed:
+                return data.model_copy(update=update_dict)
+            else:
+                return data  # Return original instance if no field's value changed
         else:
+            # For any other types (int, float, bool, None, etc.), return as is
             return data
 
-    def _store_output(self, step_cfg: Dict[str, Any], result: Any) -> None:
+    def _store_output(self, step_cfg: WorkflowStep, result: Any) -> None:
         """Store output into context based on 'output' key in step dictionary."""
         # Assumes WorkflowStep schema includes an optional 'output' field (string)
-        output_key = step_cfg.get("output")
+        output_key = step_cfg.output
         if not output_key:
             return
 
@@ -278,20 +284,17 @@ class Workflow:
 
         self.context[output_key] = value
 
-    async def _execute_step(
-        self, step_index: int, step_resolved: Dict[str, Any]
-    ) -> Any:
+    async def _execute_step(self, step_index: int, step_resolved: WorkflowStep) -> Any:
         """Execute the resolved step dictionary, handling type branching and fallback."""
         # Use 'type' field from the WorkflowStep dictionary
-        step_type = step_resolved.get("type", "deterministic").lower()
         result: Any | None = None
 
-        if step_type == "deterministic":
+        if isinstance(step_resolved, DeterministicWorkflowStep):
             from browser_use.agent.views import ActionResult  # Local import ok
 
             try:
                 # Use action key from step dictionary
-                action_name = step_resolved.get("action", "[No action specified]")
+                action_name = step_resolved.type or "[No action specified]"
                 logger.info(f"Attempting deterministic action: {action_name}")
                 result = await self._run_deterministic_step(step_resolved)
                 if isinstance(result, ActionResult) and result.error:
@@ -302,7 +305,7 @@ class Workflow:
                         f"Deterministic action {action_name} failed: {result.error}"
                     )
             except Exception as e:
-                action_name = step_resolved.get("action", "[Unknown Action]")
+                action_name = step_resolved.type or "[Unknown Action]"
                 logger.warning(
                     f"Deterministic step {step_index + 1} ({action_name}) failed: {e}. "
                     "Attempting fallback with agent."
@@ -317,13 +320,11 @@ class Workflow:
                     raise ValueError(
                         f"Deterministic step {step_index + 1} ({action_name}) failed: {e}"
                     )
-        elif step_type == "agent":
+        elif isinstance(step_resolved, AgenticWorkflowStep):
             # Use task key from step dictionary
-            task_description = step_resolved.get("task", "[No task specified]")
+            task_description = step_resolved.task
             logger.info(f"Running agent task: {task_description}")
             result = await self._run_agent_step(step_resolved)
-        else:
-            raise ValueError(f"Unknown step type in step {step_index + 1}: {step_type}")
 
         return result
 
@@ -384,9 +385,7 @@ class Workflow:
                 self.steps
             ):  # self.steps now holds dictionaries
                 # Use description from the step dictionary
-                step_description = step_dict.get(
-                    "description", "No description provided"
-                )
+                step_description = step_dict.description or "No description provided"
                 logger.info(
                     f"--- Running Step {step_index + 1}/{len(self.steps)} -- {step_description} ---"
                 )
