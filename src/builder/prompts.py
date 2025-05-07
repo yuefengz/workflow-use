@@ -26,7 +26,7 @@ Follow these rules when generating the output JSON:
      string that clearly explains what the agent should achieve **from the
      user's point of view**. A short `"description"` of *why* the step
      requires agent reasoning is encouraged, plus an optional `"max_steps"`
-     integer (defaults to 5 if omitted).
+     integer (defaults to 5 if omitted). Keep agent tasks very specific (always prefer small tasks). If you need to define multiple consecutive goals please output multiple agent tasks one after the other.
    - **Deterministic events** → keep the original recorder event structure. The
      value of `"type"` MUST match **exactly** one of the available action
      names listed below; all additional keys are interpreted as parameters for
