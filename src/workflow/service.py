@@ -111,7 +111,6 @@ class Workflow:
             llm=self.llm,
             browser=self.browser,
             browser_context=self.browser_context,
-            controller=self.controller,
             use_vision=True,  # Consider making this configurable via WorkflowStep schema
         )
         return await agent.run(max_steps=max_steps)
@@ -127,7 +126,7 @@ class Workflow:
             raise ValueError(
                 "Cannot fall back to agent: An 'llm' instance must be supplied"
             )
-
+        print("Workflow steps:", step_resolved)
         # Extract details from the failed step dictionary
         failed_action_name = step_resolved.type
         failed_params = step_resolved.model_dump()
@@ -141,16 +140,16 @@ class Workflow:
 
         # Build workflow overview using the stored dictionaries
         workflow_overview_lines: list[str] = []
-        for i, st_dict in enumerate(self.steps):
+        for idx, step in enumerate(self.steps):
             # Use description, fallback to task/action/type
-            desc = st_dict.description or st_dict.type or "Unknown Type"
-            step_type_info = st_dict.type or "deterministic"
-            details = st_dict.type
+            desc = step.description or ""
+            step_type_info = step.type
+            details = step.model_dump() 
             workflow_overview_lines.append(
-                f"  {i + 1}. ({step_type_info}) {desc} - {details}"
+                f"  {idx + 1}. ({step_type_info}) {desc} - {details}"
             )
         workflow_overview = "\n".join(workflow_overview_lines)
-
+        print(workflow_overview)
         fallback_task = WORKFLOW_FALLBACK_PROMPT_TEMPLATE.format(
             step_index=step_index + 1,
             total_steps=len(self.steps),
