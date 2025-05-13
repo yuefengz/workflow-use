@@ -91,15 +91,15 @@ class BuilderService:
             lines.append(
                 "  - Parameters: `task`* (string), `description` (string), `max_steps` (integer)"
             )
-        if "extract_content" not in [
-            a.name for a in controller.registry.registry.actions.values()
-        ]:
-            lines.append(
-                "- **`extract_content`**: Uses an LLM to extract specific information from the current page."
-            )
-            lines.append(
-                "  - Parameters: `goal`* (string), `description` (string), `should_strip_link_urls` (boolean)"
-            )
+        # if "extract_content" not in [
+        #     a.name for a in controller.registry.registry.actions.values()
+        # ]:
+        #     lines.append(
+        #         "- **`extract_content`**: Uses an LLM to extract specific information from the current page."
+        #     )
+        #     lines.append(
+        #         "  - Parameters: `goal`* (string), `description` (string), `should_strip_link_urls` (boolean)"
+        #     )
 
         logger.debug(f"Generated actions markdown:\n{lines}")
         return "\n".join(lines)

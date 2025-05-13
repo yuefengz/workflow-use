@@ -40,6 +40,7 @@ Follow these rules when generating the output JSON:
 4. Quote all placeholder values to ensure the JSON parser treats them as
    strings.
 5. In the events you will find all the selectors relative to a particular action, replicate all of them in the workflow.
+6. For many workflows steps you can go directly to certain url and skip the initial clicks (for example searching for something).
 
 
 High-level task description provided by the user (may be empty):
