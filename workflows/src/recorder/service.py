@@ -118,6 +118,7 @@ class RecordingService:
                 self.playwright_context = await p.chromium.launch_persistent_context(
                     str(USER_DATA_DIR.resolve()),
                     headless=False,
+                    no_viewport=True,
                     args=[
                         f"--disable-extensions-except={str(EXT_DIR.resolve())}",
                         f"--load-extension={str(EXT_DIR.resolve())}",

@@ -314,15 +314,16 @@ def run_workflow_command(
         typer.secho("\nWorkflow execution completed!", fg=typer.colors.GREEN)
         typer.echo("Result:")
         # Pretty print the result if it's a dictionary or list
-        if isinstance(result, (dict, list)):
-            try:
-                import rich  # For pretty printing
+        # if isinstance(result, (dict, list)):
+        #     try:
+        #         import rich  # For pretty printing
 
-                rich.print(result)
-            except ImportError:
-                print(json.dumps(result, indent=2))  # Fallback to standard json print
-        else:
-            print(result)
+        #         rich.print(result)
+        #     except ImportError:
+        #         # print(json.dumps(result, indent=2))  # Fallback to standard json print
+        # else:
+        #     print(result)
+        print(len(result), "steps")
 
     except Exception as e:
         typer.secho(f"Error running workflow: {e}", fg=typer.colors.RED)
