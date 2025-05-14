@@ -100,11 +100,10 @@ wheels = [
 
 [[package]]
 name = "browser-use"
-version = "0.1.45"
+version = "0.1.46"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
-    { name = "botocore" },
     { name = "click" },
     { name = "faiss-cpu" },
     { name = "google-api-core" },
@@ -119,7 +118,7 @@ dependencies = [
     { name = "langchain-openai" },
     { name = "markdownify" },
     { name = "mem0ai" },
-    { name = "patchright" },
+    { name = "playwright" },
     { name = "posthog" },
     { name = "psutil" },
     { name = "pydantic" },
@@ -132,9 +131,9 @@ dependencies = [
     { name = "textual" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/dc/e7/8c5ed5cd537e98e517eeabffa1d5080f24fd40b2477732e3d7590559080f/browser_use-0.1.45.tar.gz", hash = "sha256:e7dd14b3d1cd19bbbab25712db1fbec7ad1bbe75a3137a3fced5b89c849a010b", size = 120068 }
+sdist = { url = "https://files.pythonhosted.org/packages/24/f2/3a54fa17c85d608b9105be2e52b99f28707953a88605c787c7683bce14ee/browser_use-0.1.46.tar.gz", hash = "sha256:699e0bc0678a4bca459cd7f7273594d097becf18f68d1a10835d4b074dc8637b", size = 126984 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/78/0b/70c621e891b04917705a5fafc18cc9e438a1325419215c7e6c52e4fd7d5e/browser_use-0.1.45-py3-none-any.whl", hash = "sha256:7d9450e03e105ff217393246fe67d2ad527ca7c6fe0e2443d26533aa81943d3c", size = 138532 },
+    { url = "https://files.pythonhosted.org/packages/04/53/27fa5c09d92e91a83da187e9111a99a8cf0deb88d5b4a762cb63ad51e0d6/browser_use-0.1.46-py3-none-any.whl", hash = "sha256:54e5b243aafdb7b97810ff0056d72bc99816bbe545073239aae6dc382829063c", size = 145193 },
 ]
 
 [[package]]
@@ -1073,7 +1072,16 @@ wheels = [
 ]
 
 [[package]]
-name = "patchright"
+name = "platformdirs"
+version = "4.3.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b6/2d/7d512a3913d60623e7eb945c6d1b4f0bddf1d0b7ada5225274c87e5b53d1/platformdirs-4.3.7.tar.gz", hash = "sha256:eb437d586b6a0986388f0d6f74aa0cde27b48d0e3d66843640bfb6bdcdb6e351", size = 21291 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6d/45/59578566b3275b8fd9157885918fcd0c4d74162928a5310926887b856a51/platformdirs-4.3.7-py3-none-any.whl", hash = "sha256:a03875334331946f13c549dbd8f4bac7a13a50a895a0eb1e8c6a8ace80d40a94", size = 18499 },
+]
+
+[[package]]
+name = "playwright"
 version = "1.52.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
@@ -1081,23 +1089,14 @@ dependencies = [
     { name = "pyee" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/09/3f7256a9425dc9a87924c8b5776c3e216cce8932afc4cabedabacc5326fb/patchright-1.52.0-py3-none-macosx_10_13_x86_64.whl", hash = "sha256:e9cdba4921876e7cca6b66f309492498cd76e0d970e7f7eaf8c925ae3e2bd69d", size = 39592679 },
-    { url = "https://files.pythonhosted.org/packages/d8/02/8a7b790aa7aa6844651fc6b2389c3fd7496a062d4bd41ddf117243b3fe72/patchright-1.52.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:a74b3b0890836b08399ac20bb3869f6ae940efa1edd5ae5015dafb7bd099444b", size = 37944406 },
-    { url = "https://files.pythonhosted.org/packages/98/d4/ea8beebe5c673274abc77a7e6b4353154c9ed238485f14dabf62a8b132c1/patchright-1.52.0-py3-none-macosx_11_0_universal2.whl", hash = "sha256:b479c38ef8507cd84aaba1bceb99f6a9b8963621ad46348393e43eb8b2a32824", size = 39592679 },
-    { url = "https://files.pythonhosted.org/packages/94/1a/b204c14e889ebc088f382653a102a58736965decc2fd2468140ebbb56b5c/patchright-1.52.0-py3-none-manylinux1_x86_64.whl", hash = "sha256:80096c8e8b18f431e27a5fb468b3a97beacec0a67181dde63ceebbb354acb5da", size = 45122768 },
-    { url = "https://files.pythonhosted.org/packages/be/f1/62c6bccd53510db9cfe91ad1cc7c48d2f298fa8dc7bbcfe2bd14a944397c/patchright-1.52.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c113e5650871c083ac8d57a473e7a39755a66409dbcbe5fbcb2ab58020b3cd0f", size = 44522057 },
-    { url = "https://files.pythonhosted.org/packages/79/e1/dbaf1864947b95fea7655f00568d00e429a85bf126baabfcd7bc698c91a3/patchright-1.52.0-py3-none-win32.whl", hash = "sha256:91a68ae4a17b17ce38f1fb30d1c402e1ebd4dfb53c1f25a618f99910e15b4196", size = 34820590 },
-    { url = "https://files.pythonhosted.org/packages/15/9a/53732df898d39f862be7a90be18dc1becd2187a5cb0cbff3b8def43302a6/patchright-1.52.0-py3-none-win_amd64.whl", hash = "sha256:c1acb1ab091f89f542c6017180236342ffebff0e8f81fdfa785e1e50d83078e0", size = 34820595 },
-    { url = "https://files.pythonhosted.org/packages/7c/14/5d1d331ca0139dc847ccbbbca5930ac3023c9013ff9c9d4466133904fc4f/patchright-1.52.0-py3-none-win_arm64.whl", hash = "sha256:4cb6efa5fe7c4e7f562174fba36a97fc9c6d2a6a4676e501b73cbe78c47cc62f", size = 30670403 },
-]
-
-[[package]]
-name = "platformdirs"
-version = "4.3.7"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b6/2d/7d512a3913d60623e7eb945c6d1b4f0bddf1d0b7ada5225274c87e5b53d1/platformdirs-4.3.7.tar.gz", hash = "sha256:eb437d586b6a0986388f0d6f74aa0cde27b48d0e3d66843640bfb6bdcdb6e351", size = 21291 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/6d/45/59578566b3275b8fd9157885918fcd0c4d74162928a5310926887b856a51/platformdirs-4.3.7-py3-none-any.whl", hash = "sha256:a03875334331946f13c549dbd8f4bac7a13a50a895a0eb1e8c6a8ace80d40a94", size = 18499 },
+    { url = "https://files.pythonhosted.org/packages/1e/62/a20240605485ca99365a8b72ed95e0b4c5739a13fb986353f72d8d3f1d27/playwright-1.52.0-py3-none-macosx_10_13_x86_64.whl", hash = "sha256:19b2cb9d4794062008a635a99bd135b03ebb782d460f96534a91cb583f549512", size = 39611246 },
+    { url = "https://files.pythonhosted.org/packages/dc/23/57ff081663b3061a2a3f0e111713046f705da2595f2f384488a76e4db732/playwright-1.52.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:0797c0479cbdc99607412a3c486a3a2ec9ddc77ac461259fd2878c975bcbb94a", size = 37962977 },
+    { url = "https://files.pythonhosted.org/packages/a2/ff/eee8532cff4b3d768768152e8c4f30d3caa80f2969bf3143f4371d377b74/playwright-1.52.0-py3-none-macosx_11_0_universal2.whl", hash = "sha256:7223960b7dd7ddeec1ba378c302d1d09733b8dac438f492e9854c85d3ca7144f", size = 39611247 },
+    { url = "https://files.pythonhosted.org/packages/73/c6/8e27af9798f81465b299741ef57064c6ec1a31128ed297406469907dc5a4/playwright-1.52.0-py3-none-manylinux1_x86_64.whl", hash = "sha256:d010124d24a321e0489a8c0d38a3971a7ca7656becea7656c9376bfea7f916d4", size = 45141333 },
+    { url = "https://files.pythonhosted.org/packages/4e/e9/0661d343ed55860bcfb8934ce10e9597fc953358773ece507b22b0f35c57/playwright-1.52.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:4173e453c43180acc60fd77ffe1ebee8d0efbfd9986c03267007b9c3845415af", size = 44540623 },
+    { url = "https://files.pythonhosted.org/packages/7a/81/a850dbc6bc2e1bd6cc87341e59c253269602352de83d34b00ea38cf410ee/playwright-1.52.0-py3-none-win32.whl", hash = "sha256:cd0bdf92df99db6237a99f828e80a6a50db6180ef8d5352fc9495df2c92f9971", size = 34839156 },
+    { url = "https://files.pythonhosted.org/packages/51/f3/cca2aa84eb28ea7d5b85d16caa92d62d18b6e83636e3d67957daca1ee4c7/playwright-1.52.0-py3-none-win_amd64.whl", hash = "sha256:dcbf75101eba3066b7521c6519de58721ea44379eb17a0dafa94f9f1b17f59e4", size = 34839164 },
+    { url = "https://files.pythonhosted.org/packages/b5/4f/71a8a873e8c3c3e2d3ec03a578e546f6875be8a76214d90219f752f827cd/playwright-1.52.0-py3-none-win_arm64.whl", hash = "sha256:9d0085b8de513de5fb50669f8e6677f0252ef95a9a1d2d23ccee9638e71e65cb", size = 30688972 },
 ]
 
 [[package]]
@@ -3826,7 +3825,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "browser-use", specifier = ">=0.1.45" },
+    { name = "browser-use", specifier = ">=0.1.46" },
     { name = "textual", specifier = ">=3.2.0" },
     { name = "typer", specifier = ">=0.15.3" },
 ]

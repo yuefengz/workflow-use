@@ -188,3 +188,5 @@ data/
 # For Config Files (Current Settings)
 .config.pkl
 *.pdf
+
+user_data_dir
