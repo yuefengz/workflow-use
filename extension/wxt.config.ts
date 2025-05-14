@@ -14,6 +14,7 @@ export default defineConfig({
     }),
   manifest: {
     permissions: ["tabs", "sidePanel"],
+    host_permissions: ["http://127.0.0.1/*"],
     // options_page: "options.html",
     // action: {
     //   default_popup: "popup.html",

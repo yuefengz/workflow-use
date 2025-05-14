@@ -1,43 +1,40 @@
 import { Workflow } from "./workflow-types"; // Assuming Workflow is in this path
 
-export interface BaseMessage {
-  source: "BU_BUS"; // To identify messages from our bus
-  timestamp: number;
-}
+// Types for events sent via HTTP to the Python server
 
-export interface WorkflowUpdateMessage extends BaseMessage {
+export interface HttpWorkflowUpdateEvent {
   type: "WORKFLOW_UPDATE";
+  timestamp: number;
   payload: Workflow;
 }
 
-export interface RecordingStartedMessage extends BaseMessage {
+export interface HttpRecordingStartedEvent {
   type: "RECORDING_STARTED";
+  timestamp: number;
   payload: {
     message: string;
   };
 }
 
-export interface RecordingStoppedMessage extends BaseMessage {
+export interface HttpRecordingStoppedEvent {
   type: "RECORDING_STOPPED";
+  timestamp: number;
   payload: {
     message: string;
   };
 }
 
-export interface TerminateCommandMessage extends BaseMessage {
-  type: "TERMINATE_COMMAND";
-  payload: {
-    reason?: string; // Optional reason for termination
-  };
-}
+// If you plan to send other types of events, like TERMINATE_COMMAND, define them here too
+// export interface HttpTerminateCommandEvent {
+//   type: "TERMINATE_COMMAND";
+//   timestamp: number;
+//   payload: {
+//     reason?: string; // Optional reason for termination
+//   };
+// }
 
-export type MessageBusMessage =
-  | WorkflowUpdateMessage
-  | RecordingStartedMessage
-  | RecordingStoppedMessage
-  | TerminateCommandMessage;
-
-// Helper function to create a loggable string
-export function formatBusMessage(message: MessageBusMessage): string {
-  return `BU_BUS_MESSAGE: ${JSON.stringify(message)}`;
-}
+export type HttpEvent =
+  | HttpWorkflowUpdateEvent
+  | HttpRecordingStartedEvent
+  | HttpRecordingStoppedEvent;
+// | HttpTerminateCommandEvent; // Add other event types to the union if defined

@@ -17,10 +17,10 @@ import {
   Workflow,
 } from "../lib/workflow-types";
 import {
-  formatBusMessage,
-  WorkflowUpdateMessage,
-  RecordingStartedMessage,
-  RecordingStoppedMessage,
+  HttpEvent,
+  HttpRecordingStartedEvent,
+  HttpRecordingStoppedEvent,
+  HttpWorkflowUpdateEvent,
 } from "../lib/message-bus-types";
 
 export default defineBackground(() => {
@@ -33,6 +33,8 @@ export default defineBackground(() => {
   let isRecordingEnabled = true; // Default to disabled (OFF)
   let lastWorkflowHash: string | null = null; // Cache for the last logged workflow hash
 
+  const PYTHON_SERVER_ENDPOINT = "http://127.0.0.1:7331/event";
+
   // Hashing function using SubtleCrypto (SHA-256)
   async function calculateSHA256(str: string): Promise<string> {
     const encoder = new TextEncoder();
@@ -43,6 +45,22 @@ export default defineBackground(() => {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
     return hashHex;
+  }
+
+  // Helper function to send data to the Python server
+  async function sendEventToServer(eventData: HttpEvent) {
+    try {
+      await fetch(PYTHON_SERVER_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(eventData),
+      });
+    } catch (error) {
+      console.warn(
+        `Failed to send event to Python server at ${PYTHON_SERVER_ENDPOINT}:`,
+        error
+      );
+    }
   }
 
   // Function to broadcast workflow data updates to the console bus
@@ -78,13 +96,13 @@ export default defineBackground(() => {
     lastWorkflowHash = currentWorkflowHash;
     // console.log("[DEBUG] broadcastWorkflowDataUpdate: Steps changed, workflowData object:", JSON.parse(JSON.stringify(workflowData))); // Optional
 
-    const busMessage: WorkflowUpdateMessage = {
-      source: "BU_BUS",
+    // Send workflow update to Python server
+    const eventToSend: HttpWorkflowUpdateEvent = {
       type: "WORKFLOW_UPDATE",
       timestamp: Date.now(),
       payload: workflowData,
     };
-    console.log(formatBusMessage(busMessage));
+    sendEventToServer(eventToSend);
     return workflowData;
   }
 
@@ -481,14 +499,13 @@ export default defineBackground(() => {
         console.log("Recording status set to: true");
         broadcastRecordingStatus(); // Inform content scripts and sidepanel
 
-        // Log status to console message bus
-        const busMessage: RecordingStartedMessage = {
-          source: "BU_BUS",
+        // Send recording started event to Python server
+        const eventToSend: HttpRecordingStartedEvent = {
           type: "RECORDING_STARTED",
           timestamp: Date.now(),
           payload: { message: "Recording has started" },
         };
-        console.log(formatBusMessage(busMessage));
+        sendEventToServer(eventToSend);
       }
       sendResponse({ status: "started" }); // Send simple confirmation
     } else if (message.type === "STOP_RECORDING") {
@@ -498,14 +515,13 @@ export default defineBackground(() => {
         console.log("Recording status set to: false");
         broadcastRecordingStatus(); // Inform content scripts and sidepanel
 
-        // Log status to console message bus
-        const busMessage: RecordingStoppedMessage = {
-          source: "BU_BUS",
+        // Send recording stopped event to Python server
+        const eventToSend: HttpRecordingStoppedEvent = {
           type: "RECORDING_STOPPED",
           timestamp: Date.now(),
           payload: { message: "Recording has stopped" },
         };
-        console.log(formatBusMessage(busMessage));
+        sendEventToServer(eventToSend);
       }
       sendResponse({ status: "stopped" }); // Send simple confirmation
     }
