@@ -62,9 +62,10 @@ class WorkflowController(Controller):
             params: NavigationAction, browser: BrowserContext
         ) -> ActionResult:
             """Navigate to the given URL."""
-            await self.registry.execute_action(
-                action_name="go_to_url", params=params.model_dump(), browser=browser
-            )
+            page = await browser.get_current_page()
+            await page.goto(params.url)
+            await page.wait_for_load_state()
+
             msg = f"🔗  Navigated to URL: {params.url}"
             logger.info(msg)
             return ActionResult(extracted_content=msg, include_in_memory=True)
