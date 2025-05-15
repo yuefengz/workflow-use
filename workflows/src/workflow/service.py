@@ -362,10 +362,11 @@ class Workflow:
             result = await self._execute_step(step_index, step_resolved)
             # Persist outputs (if declared) for future steps
             self._store_output(step_resolved, result)
+            await asyncio.sleep(5)  # Keep browser open for 5 seconds
         # Each invocation opens a new browser context – we close the browser to
         # release resources right away.  This keeps the single-step API
         # self-contained.
-        await self.browser.close()
+        # await self.browser.close() # <-- Commented out for testing
         return result
 
     async def run_async(
@@ -380,7 +381,8 @@ class Workflow:
 
         results: List[Any] = []
 
-        async with self.browser_context:
+        await self.browser_context.__aenter__()
+        try:
             for step_index, step_dict in enumerate(
                 self.steps
             ):  # self.steps now holds dictionaries
@@ -401,6 +403,11 @@ class Workflow:
                 # Persist outputs using the resolved step dictionary
                 self._store_output(step_resolved, result)
                 logger.info(f"--- Finished Step {step_index + 1} ---")
+        finally:
+            if close_browser_at_end:
+                # Ensure __aexit__ is called with appropriate args for exception handling if needed
+                # For simplicity, assuming no exception to pass: exc_type, exc_val, exc_tb = None, None, None
+                await self.browser_context.__aexit__(None, None, None)
 
         # Clean-up browser after finishing workflow
         if close_browser_at_end:
