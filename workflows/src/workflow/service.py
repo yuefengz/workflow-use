@@ -17,15 +17,15 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, create_model
 
-from src.schema.views import (
-    WorkflowDefinitionSchema,
-    WorkflowStep,
-    DeterministicWorkflowStep,
-    AgenticWorkflowStep,
-)
-
-from src.workflow.prompts import WORKFLOW_FALLBACK_PROMPT_TEMPLATE
 from src.controller.service import WorkflowController
+from src.schema.views import (
+    AgenticWorkflowStep,
+    DeterministicWorkflowStep,
+    WorkflowDefinitionSchema,
+    WorkflowInputSchemaDefinition,
+    WorkflowStep,
+)
+from src.workflow.prompts import WORKFLOW_FALLBACK_PROMPT_TEMPLATE
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +72,7 @@ class Workflow:
 
         self.context: dict[str, Any] = {}
 
-        self.inputs_def: Dict[str, Any] = (
-            self.schema.input_schema.model_dump() if self.schema.input_schema else {}
-        )
+        self.inputs_def: List[WorkflowInputSchemaDefinition] = self.schema.input_schema
         self._input_model: type[BaseModel] = self._build_input_model()
 
     async def _run_deterministic_step(
@@ -144,7 +142,7 @@ class Workflow:
             # Use description, fallback to task/action/type
             desc = step.description or ""
             step_type_info = step.type
-            details = step.model_dump() 
+            details = step.model_dump()
             workflow_overview_lines.append(
                 f"  {idx + 1}. ({step_type_info}) {desc} - {details}"
             )
@@ -370,7 +368,9 @@ class Workflow:
         await self.browser.close()
         return result
 
-    async def run_async(self, inputs: dict[str, Any] | None = None) -> List[Any]:
+    async def run_async(
+        self, inputs: dict[str, Any] | None = None, close_browser_at_end: bool = True
+    ) -> List[Any]:
         """Execute the workflow asynchronously using step dictionaries."""
         runtime_inputs = inputs or {}
         # 1. Validate inputs against definition
@@ -384,6 +384,8 @@ class Workflow:
             for step_index, step_dict in enumerate(
                 self.steps
             ):  # self.steps now holds dictionaries
+                await asyncio.sleep(0.1)
+
                 # Use description from the step dictionary
                 step_description = step_dict.description or "No description provided"
                 logger.info(
@@ -401,22 +403,10 @@ class Workflow:
                 logger.info(f"--- Finished Step {step_index + 1} ---")
 
         # Clean-up browser after finishing workflow
-        await self.browser.close()
+        if close_browser_at_end:
+            await self.browser.close()
+
         return results
-
-    # Convenience synchronous wrapper ------------------------------------------------
-    def run(self, inputs: dict[str, Any] | None = None) -> List[Any]:
-        """Synchronously execute :py:meth:`run_async` with ``asyncio.run``.
-
-        Args:
-                inputs: Dictionary of input values required by the workflow (defined in JSON).
-        """
-        return asyncio.run(self.run_async(inputs=inputs))
-
-    # Convenience wrapper to execute a single step synchronously -----------------
-    def run_step(self, step_index: int, inputs: dict[str, Any] | None = None) -> Any:
-        """Synchronously execute :py:meth:`run_step_async` for *step_index*."""
-        return asyncio.run(self.run_step_async(step_index, inputs=inputs))
 
     # ------------------------------------------------------------------
     # LangChain tool wrapper
@@ -424,33 +414,30 @@ class Workflow:
 
     def _build_input_model(self) -> type[BaseModel]:
         """Return a *pydantic* model matching the workflow's ``input_schema`` section."""
-        if not self.inputs_def or not self.inputs_def.get("properties"):
-            # No declared inputs or no properties defined -> generate an empty model
+        if not self.inputs_def:
+            # No declared inputs -> generate an empty model
             # Use schema name for uniqueness, fallback if needed
             model_name = (
                 f"{(self.schema.name or 'Workflow').replace(' ', '_')}_NoInputs"
             )
-            return create_model(model_name)  # type: ignore[call-arg]
-
-        props = self.inputs_def.get("properties", {})
-        required = set(self.inputs_def.get("required", []))
+            return create_model(model_name)
 
         type_mapping = {
             "string": str,
             "number": float,
-            "bool": bool,
+            "bool": bool,  # Added boolean type
         }
         fields: Dict[str, tuple[type, Any]] = {}
-        for name, spec in props.items():
-            type_str = (
-                spec if isinstance(spec, str) else spec.get("type")
-            )  # spec may be string or dict
+        for input_def in self.inputs_def:
+            name = input_def.name
+            type_str = input_def.type
             py_type = type_mapping.get(type_str)
             if py_type is None:
                 raise ValueError(
                     f"Unsupported input type: {type_str!r} for field {name!r}"
                 )
-            default = ... if name in required else None
+            # Pydantic's create_model uses ... (Ellipsis) to mark required fields
+            default = ... if input_def.required else None
             fields[name] = (py_type, default)
 
         from typing import cast as _cast
@@ -459,7 +446,7 @@ class Workflow:
         # signatures, which the static type checker cannot easily verify.  We cast
         # the **fields** mapping to **Any** to silence these warnings.
         return create_model(  # type: ignore[arg-type]
-            f"{self.schema.name}_Inputs",
+            f"{(self.schema.name or 'Workflow').replace(' ', '_')}_Inputs",
             **_cast(Dict[str, Any], fields),
         )
 
@@ -572,10 +559,15 @@ class WorkflowExecutor:
         )
 
     async def run_workflow(
-        self, workflow: Workflow, inputs: dict[str, Any] | None = None
+        self,
+        workflow: Workflow,
+        inputs: dict[str, Any] | None = None,
+        close_browser_at_end: bool = True,
     ) -> List[Any]:
         """Executes a given Workflow instance asynchronously."""
-        return await workflow.run_async(inputs=inputs)
+        return await workflow.run_async(
+            inputs=inputs, close_browser_at_end=close_browser_at_end
+        )
 
     async def run_workflow_from_path(
         self, json_path: Union[str, Path], inputs: dict[str, Any] | None = None

@@ -110,6 +110,7 @@ class RecordingService:
             self.recording_complete_event.set()  # Signal failure
             return
 
+        # delete the user data dir
         USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
         print(f"[Service] Using Playwright user data directory: {USER_DATA_DIR}")
 

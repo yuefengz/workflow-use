@@ -1,23 +1,6 @@
-from typing import Dict, List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
-
-
-# --- Input Schema Definition ---
-# (Remains the same)
-class InputSchemaPropertyDetail(BaseModel):
-    type: Literal["string", "number", "bool"]
-
-
-InputSchemaProperties = Dict[
-    str, Union[Literal["string", "number", "bool"], InputSchemaPropertyDetail]
-]
-
-
-class WorkflowInputSchemaDefinition(BaseModel):
-    type: Literal["object"] = Field(default="object")
-    properties: InputSchemaProperties = Field(default_factory=dict)
-    required: List[str] = Field(default_factory=list)
 
 
 # --- Base Step Model ---
@@ -129,8 +112,6 @@ class ScrollStep(TimestampedWorkflowStep):
     scrollY: int = Field(..., description="Vertical scroll pixels.")
 
 
-
-
 # --- Union of all possible step types ---
 # This Union defines what constitutes a valid step in the "steps" list.
 DeterministicWorkflowStep = Union[
@@ -155,12 +136,31 @@ WorkflowStep = Union[
 allowed_controller_actions = []
 
 
+# --- Input Schema Definition ---
+# (Remains the same)
+class WorkflowInputSchemaDefinition(BaseModel):
+    name: str = Field(
+        ...,
+        description="The name of the property. This will be used as the key in the input schema.",
+    )
+    type: Literal["string", "number", "bool"]
+    required: Optional[bool] = Field(
+        default=None,
+        description="None if the property is optional, True if the property is required.",
+    )
+
+
 # --- Top-Level Workflow Definition File ---
 # Uses the Union WorkflowStep type
 
 
 class WorkflowDefinitionSchema(BaseModel):
     """Pydantic model representing the structure of the workflow JSON file."""
+
+    workflow_analysis: Optional[str] = Field(
+        None,
+        description="A chain of thought reasoning analysis of the original workflow recording.",
+    )
 
     name: str = Field(..., description="The name of the workflow.")
     description: str = Field(
@@ -169,12 +169,12 @@ class WorkflowDefinitionSchema(BaseModel):
     version: str = Field(
         ..., description="The version identifier for this workflow definition."
     )
-    input_schema: Optional[WorkflowInputSchemaDefinition] = Field(
-        default=None,
-        description="Optional schema defining the inputs required to run the workflow.",
-    )
     steps: List[WorkflowStep] = Field(
         ...,
         min_length=1,
         description="An ordered list of steps (actions or agent tasks) to be executed.",
+    )
+    input_schema: list[WorkflowInputSchemaDefinition] = Field(
+        # default=WorkflowInputSchemaDefinition(),
+        description="List of input schema definitions.",
     )

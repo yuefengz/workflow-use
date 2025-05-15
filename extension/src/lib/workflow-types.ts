@@ -5,10 +5,7 @@ export interface Workflow {
   name: string; // Consider how to populate these fields
   description: string; // Consider how to populate these fields
   version: string; // Consider how to populate these fields
-  input_schema: {
-    type: string;
-    properties: Record<string, any>;
-  };
+  input_schema: [];
 }
 
 export type Step =

@@ -13,7 +13,7 @@ export default defineConfig({
       // WXT-specific overrides (optional)
     }),
   manifest: {
-    permissions: ["tabs", "sidePanel"],
+    permissions: ["tabs", "sidePanel", "<all_urls>"],
     host_permissions: ["http://127.0.0.1/*"],
     // options_page: "options.html",
     // action: {

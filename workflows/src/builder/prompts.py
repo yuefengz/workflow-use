@@ -11,15 +11,15 @@ Input Steps Format:
     [Image Data]
 
 Follow these rules when generating the output JSON:
-1. Top-level keys (in order): "name", "description", "input_schema" (optional), "steps" and "version".
-   - "input_schema" – if present – MUST follow JSON-Schema draft-7 subset semantics:
-       {{
-         "type": "object", 
-         "properties": {{ "foo": {{"type": "string"}}, … }},
-         "required": ["foo", …]
-       }}
-   - Omit "input_schema" entirely if the workflow is fully deterministic and requires
-     no external parameters.
+0. The first thing you will output is the "workflow_analysis". First analyze the original workflow recording, what it is about and create a general analysis of the workflow. Also think about which variables are going to be needed for the workflow.
+1. Top-level keys: "workflow_analysis", "name", "description", "input_schema", "steps" and "version".
+   - "input_schema" - MUST follow JSON-Schema draft-7 subset semantics:
+       [
+         {{"name": "foo", "type": "string", "required": true}}, 
+         {{"name": "bar", "type": "number"}}, 
+         ...
+       ]
+   - In "input_schema" you can make "properties" and "required" empty if the workflow is fully deterministic and requires no external parameters.
 2. "steps" is an array of dictionaries executed sequentially.
    - Each dictionary MUST include a `"type"` field.
    - **Agent events** → `"type": "agent"` **MUST** also include a `"task"`

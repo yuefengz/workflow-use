@@ -78,7 +78,7 @@ export default defineBackground(() => {
       name: "Recorded Workflow",
       description: `Recorded on ${new Date().toLocaleString()}`,
       version: "1.0.0",
-      input_schema: { type: "object", properties: {} },
+      input_schema: [],
       steps: allSteps, // allSteps is used here
     };
 
