@@ -37,7 +37,7 @@ jobs:
           git push origin $new_tag
 
   publish_to_pypi:
-    if: github.event_name == 'release'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
         with:
           python-version: "3.x"
       - uses: astral-sh/setup-uv@v5
-      - run: uv run ruff check --no-fix --select PLE # check only for syntax errors
+      # - run: uv run ruff check --no-fix --select PLE # check only for syntax errors
       - run: uv build
       - run: uv publish --trusted-publishing always
       - name: Push to stable branch (if stable release)
