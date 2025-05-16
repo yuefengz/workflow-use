@@ -37,7 +37,7 @@ jobs:
           git push origin $new_tag
 
   publish_to_pypi:
-    if: github.event_name == 'push'
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
