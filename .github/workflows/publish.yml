@@ -22,6 +22,9 @@ jobs:
   tag_pre_release:
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workflows
     steps:
       - uses: actions/checkout@v4
       - name: Create pre-release tag
@@ -39,6 +42,9 @@ jobs:
   publish_to_pypi:
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workflows
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -46,7 +52,7 @@ jobs:
         with:
           python-version: "3.x"
       - uses: astral-sh/setup-uv@v5
-      # - run: uv run ruff check --no-fix --select PLE # check only for syntax errors
+      - run: uv run ruff check --no-fix --select PLE # check only for syntax errors
       - run: uv build
       - run: uv publish --trusted-publishing always
       - name: Push to stable branch (if stable release)
