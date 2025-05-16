@@ -1,0 +1,219 @@
+.play-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: #2a7ac5;
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.play-button:hover {
+  background-color: #3a8ad5;
+  transform: scale(1.05);
+}
+
+.play-button svg {
+  width: 24px;
+  height: 24px;
+}
+
+.play-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.play-modal {
+  background-color: #2a2a2a;
+  color: #fff;
+  border-radius: 8px;
+  width: 600px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.play-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #444;
+}
+
+.play-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.play-modal-content {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.close-button:hover {
+  color: #fff;
+}
+
+.input-fields {
+  margin-bottom: 20px;
+}
+
+.input-fields h4 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 16px;
+  color: #ddd;
+}
+
+.input-field {
+  margin-bottom: 12px;
+}
+
+.input-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #ccc;
+}
+
+.input-field .required {
+  color: #ff7a7a;
+  margin-left: 4px;
+}
+
+.input-field .type-info {
+  color: #888;
+  margin-left: 6px;
+  font-size: 12px;
+}
+
+.input-control {
+  width: 100%;
+  background: #333;
+  border: 1px solid #555;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.cancel-button {
+  background: #555;
+  border: none;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.execute-button {
+  background: #2a7ac5;
+  border: none;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.execute-button:hover {
+  background: #3a8ad5;
+}
+
+.execute-button:disabled {
+  background: #555;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.error-message {
+  background: rgba(255, 0, 0, 0.2);
+  color: #ff9999;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.result-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.result-header h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #7ac5ff;
+}
+
+.steps-completed {
+  font-size: 14px;
+  color: #ccc;
+}
+
+.result-data {
+  background: #333;
+  border-radius: 4px;
+  padding: 12px;
+  overflow: auto;
+  flex: 1;
+  margin-bottom: 16px;
+  max-height: 300px;
+}
+
+.result-data pre {
+  margin: 0;
+  color: #ddd;
+  font-family: monospace;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
