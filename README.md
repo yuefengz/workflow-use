@@ -53,6 +53,10 @@ python cli.py --help
 
 https://github.com/user-attachments/assets/cf284e08-8c8c-484a-820a-02c507de11d4
 
+## Gregor's explanation
+
+https://github.com/user-attachments/assets/379e57c7-f03e-4eb9-8184-521377d5c0f9
+
 
 # Features
 
