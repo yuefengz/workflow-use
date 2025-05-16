@@ -47,11 +47,17 @@ python cli.py --help
 
 # Demos
 
-# Vision
+# Features
+
+- 🔁 **Record Once, Reuse Forever**: Record browser interactions once and replay them indefinitely.
+- ⏳ **Show, not tell**: No need to spend hours prompting Browser Use to do the same thing over and over again.
+- ⚙️ **Structured & Executable Workflows**: Converts recordings into deterministic, fast, and reliable workflows which automatically extract variables from forms.
+- 🪄 **Human-like Interaction Understanding**: Intelligently filters noise from recordings to create meaningful workflows.
+- 🔒 **Enterprise-Ready Foundation**: Built for future scalability with features like self-healing and workflow diffs.
+
+# Vision and roadmap
 
 Show computer what it needs to do once, and it will do it over and over again without any human intervention.
-
-# Roadmap
 
 ## Workflows
 
