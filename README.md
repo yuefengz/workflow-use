@@ -49,6 +49,11 @@ python cli.py --help
 
 # Demos
 
+## Workflow Use filling out form instantly
+
+https://github.com/user-attachments/assets/cf284e08-8c8c-484a-820a-02c507de11d4
+
+
 # Features
 
 - 🔁 **Record Once, Reuse Forever**: Record browser interactions once and replay them indefinitely.
