@@ -14,7 +14,7 @@
 
 ⚙️ **Workflow Use** is the easiest way to create and execute deterministic workflows which have the ability to fallback to [Browser Use](https://github.com/browser-use/browser-use) if something fails.
 
-📚 **Quick explanation**: The recorder uses rr-web events to record the actions and then uses a LLM to convert the actions into a deterministic workflow and automatically exposes the variables the workflow needs.
+📚 **How it works**: The recorder uses rr-web events to record the actions and then uses a LLM to convert the actions into a deterministic workflow and automatically exposes the variables the workflow needs. If any of the steps fail, the workflow will fallback to Browser Use for that step and then continue with the next step.
 
 ❗ This project is in very early development so we don't recommend using this in production. Lots of things will change and we don't have a release schedule yet. Originally, the project was born out of customer demand to make Browser Use more reliable and deterministic.
 
