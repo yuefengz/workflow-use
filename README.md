@@ -20,6 +20,10 @@
 
 # Quick start
 
+```bash
+git clone https://github.com/browser-use/workflow-use
+```
+
 ## Build the extension
 
 ```bash
@@ -33,10 +37,8 @@ npm run build
 ```bash
 cd workflows
 uv sync
-```
-
-```bash
 playwright install chromium
+cp .env.example .env
 ```
 
 ## Run the cli
