@@ -228,6 +228,59 @@ def build_from_recording_command(
 		typer.secho(f'Failed to build workflow from {recording_path.name}.', fg=typer.colors.RED)
 		raise typer.Exit(code=1)
 
+@app.command(name='run-as-tool', help='Runs an existing workflow as a tool with an LLM-driven prompt.')
+def run_as_tool_command(
+    workflow_path: Path = typer.Argument(
+        ...,
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        help='Path to the .workflow.json file.',
+        show_default=False,
+    ),
+    prompt: str = typer.Option(
+        ...,
+        '--prompt',
+        '-p',
+        help='Prompt for the LLM to reason about and execute the workflow.',
+        prompt=True,  # Prompts interactively if not provided
+    ),
+):
+    """
+    Loads a workflow and runs it as a tool, using the provided prompt to let the LLM
+    determine the necessary inputs and execute the workflow.
+    """
+    if not workflow_executor:
+        typer.secho(
+            'WorkflowExecutor not initialized. Please check your OpenAI API key.',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    typer.echo(
+        typer.style(f'Loading workflow from: {typer.style(str(workflow_path.resolve()), fg=typer.colors.MAGENTA)}', bold=True)
+    )
+    typer.echo()  # Add space
+
+    try:
+        workflow_definition_obj = workflow_executor.load_workflow_from_path(workflow_path)
+    except Exception as e:
+        typer.secho(f'Error loading workflow: {e}', fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    typer.secho('Workflow loaded successfully.', fg=typer.colors.GREEN, bold=True)
+    typer.echo()  # Add space
+    typer.echo(typer.style(f'Running workflow as tool with prompt: "{prompt}"', bold=True))
+
+    try:
+        result = asyncio.run(workflow_definition_obj.run_as_tool(prompt))
+        typer.secho('\nWorkflow execution completed!', fg=typer.colors.GREEN, bold=True)
+        typer.echo(typer.style('Result:', bold=True))
+        typer.echo(json.dumps(result, indent=2))
+    except Exception as e:
+        typer.secho(f'Error running workflow as tool: {e}', fg=typer.colors.RED)
+        raise typer.Exit(code=1)
 
 @app.command(name='run-workflow', help='Runs an existing workflow from a JSON file.')
 def run_workflow_command(
