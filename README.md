@@ -66,6 +66,7 @@ Show computer what it needs to do once, and it will do it over and over again wi
 - [ ] Better support for LLM steps
 - [ ] Take output from previous steps and use it as input for next steps
 - [ ] Expose workflows as MCP tools
+- [ ] Use Browser Use to automatically create workflows from websites
 
 ## Developer experience
 
