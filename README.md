@@ -12,9 +12,7 @@
 [![Twitter Follow](https://img.shields.io/twitter/follow/Gregor?style=social)](https://x.com/gregpr07)
 [![Twitter Follow](https://img.shields.io/twitter/follow/Magnus?style=social)](https://x.com/mamagnus00)
 
-⚙️ **Workflow Use** is the easiest way to create and execute deterministic workflows which have the ability to fallback to [Browser Use](https://github.com/browser-use/browser-use) if something fails.
-
-📚 **How it works**: The recorder uses rr-web events to record the actions and then uses a LLM to convert the actions into a deterministic workflow and automatically exposes the variables the workflow needs. If any of the steps fail, the workflow will fallback to Browser Use for that step and then continue with the next step.
+⚙️ **Workflow Use** is the easiest way to create and execute deterministic workflows with variables which fallback to [Browser Use](https://github.com/browser-use/browser-use) if a step fails. You just _show_ the recorder the workflow, we automatically generate the workflow.
 
 ❗ This project is in very early development so we don't recommend using this in production. Lots of things will change and we don't have a release schedule yet. Originally, the project was born out of customer demand to make Browser Use more reliable and deterministic.
 
@@ -57,11 +55,10 @@ https://github.com/user-attachments/assets/cf284e08-8c8c-484a-820a-02c507de11d4
 
 https://github.com/user-attachments/assets/379e57c7-f03e-4eb9-8184-521377d5c0f9
 
-
 # Features
 
 - 🔁 **Record Once, Reuse Forever**: Record browser interactions once and replay them indefinitely.
-- ⏳ **Show, not tell**: No need to spend hours prompting Browser Use to do the same thing over and over again.
+- ⏳ **Show, don't prompt**: No need to spend hours prompting Browser Use to do the same thing over and over again.
 - ⚙️ **Structured & Executable Workflows**: Converts recordings into deterministic, fast, and reliable workflows which automatically extract variables from forms.
 - 🪄 **Human-like Interaction Understanding**: Intelligently filters noise from recordings to create meaningful workflows.
 - 🔒 **Enterprise-Ready Foundation**: Built for future scalability with features like self-healing and workflow diffs.
@@ -72,6 +69,7 @@ Show computer what it needs to do once, and it will do it over and over again wi
 
 ## Workflows
 
+- [ ] Nice way to use the `.json` files inside python code
 - [ ] Improve LLM fallback when step fails (currently really bad)
 - [ ] Self healing, if it fails automatically agent kicks in and updates the workflow file
 - [ ] Better support for LLM steps
