@@ -135,6 +135,17 @@ class Workflow:
             f"step={step_index + 1}/{total_steps}, action='{failed_action_name}', description='{step_description}', "
             f"params={str(failed_params)}, error='{error_msg}'"
         )
+        # Determine the failed_value based on available step attributes
+        failed_value = None
+        if hasattr(step_resolved, 'elementText'):
+            failed_value = getattr(step_resolved, 'elementText')
+        elif hasattr(step_resolved, 'url'):
+            failed_value = getattr(step_resolved, 'url')
+        elif hasattr(step_resolved, 'value'):
+            failed_value = getattr(step_resolved, 'value')
+        else:
+            # Add any other logic to determine failed_value from step details
+            failed_value = 'No specific failed value available'
 
         # Build workflow overview using the stored dictionaries
         workflow_overview_lines: list[str] = []
@@ -148,11 +159,14 @@ class Workflow:
             )
         workflow_overview = "\n".join(workflow_overview_lines)
         print(workflow_overview)
+
+        # Build the fallback task with the failed_value
         fallback_task = WORKFLOW_FALLBACK_PROMPT_TEMPLATE.format(
             step_index=step_index + 1,
             total_steps=len(self.steps),
             workflow_details=workflow_overview,
             fail_details=fail_details,
+            failed_value=failed_value
         )
         logger.info(f"Agent fallback task: {fallback_task}")
 
