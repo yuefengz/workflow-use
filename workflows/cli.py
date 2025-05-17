@@ -4,13 +4,15 @@ import tempfile  # For temporary file handling
 from pathlib import Path
 
 import typer
+from browser_use.browser.browser import Browser
 
 # Assuming OPENAI_API_KEY is set in the environment
 from langchain_openai import ChatOpenAI
 
 from workflow_use.builder.service import BuilderService
+from workflow_use.controller.service import WorkflowController
 from workflow_use.recorder.service import RecordingService  # Added import
-from workflow_use.workflow.service import WorkflowExecutor
+from workflow_use.workflow.service import Workflow
 
 # Placeholder for recorder functionality
 # from src.recorder.service import RecorderService
@@ -32,7 +34,6 @@ except Exception as e:
 
 builder_service = BuilderService(llm=llm_instance) if llm_instance else None
 # recorder_service = RecorderService() # Placeholder
-workflow_executor = WorkflowExecutor(llm_instance) if llm_instance else None
 recording_service = (
 	RecordingService()
 )  # Assuming RecordingService does not need LLM, or handle its potential None state if it does.
@@ -112,7 +113,7 @@ def _build_and_save_workflow_from_recording(
 
 	default_workflow_filename = f'{file_stem}.workflow.json'
 	workflow_output_name: str = typer.prompt(
-		typer.style('Enter a name for the generated workflow file', bold=True) + f' (e.g., my_search.workflow.json):',
+		typer.style('Enter a name for the generated workflow file', bold=True) + ' (e.g., my_search.workflow.json):',
 		default=default_workflow_filename,
 	)
 	final_workflow_path = output_dir / workflow_output_name
@@ -228,59 +229,68 @@ def build_from_recording_command(
 		typer.secho(f'Failed to build workflow from {recording_path.name}.', fg=typer.colors.RED)
 		raise typer.Exit(code=1)
 
-@app.command(name='run-as-tool', help='Runs an existing workflow as a tool with an LLM-driven prompt.')
+
+@app.command(
+	name='run-as-tool',
+	help='Runs an existing workflow and automatically parse the required variables from prompt.',
+)
 def run_as_tool_command(
-    workflow_path: Path = typer.Argument(
-        ...,
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-        help='Path to the .workflow.json file.',
-        show_default=False,
-    ),
-    prompt: str = typer.Option(
-        ...,
-        '--prompt',
-        '-p',
-        help='Prompt for the LLM to reason about and execute the workflow.',
-        prompt=True,  # Prompts interactively if not provided
-    ),
+	workflow_path: Path = typer.Argument(
+		...,
+		exists=True,
+		file_okay=True,
+		dir_okay=False,
+		readable=True,
+		help='Path to the .workflow.json file.',
+		show_default=False,
+	),
+	prompt: str = typer.Option(
+		...,
+		'--prompt',
+		'-p',
+		help='Prompt for the LLM to reason about and execute the workflow.',
+		prompt=True,  # Prompts interactively if not provided
+	),
 ):
-    """
-    Loads a workflow and runs it as a tool, using the provided prompt to let the LLM
-    determine the necessary inputs and execute the workflow.
-    """
-    if not workflow_executor:
-        typer.secho(
-            'WorkflowExecutor not initialized. Please check your OpenAI API key.',
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(code=1)
+	"""
+	Run the workflow and automatically parse the required variables from the input/prompt that the user provides.
+	"""
+	if not llm_instance:
+		typer.secho(
+			'LLM not initialized. Please check your OpenAI API key. Cannot run as tool.',
+			fg=typer.colors.RED,
+		)
+		raise typer.Exit(code=1)
 
-    typer.echo(
-        typer.style(f'Loading workflow from: {typer.style(str(workflow_path.resolve()), fg=typer.colors.MAGENTA)}', bold=True)
-    )
-    typer.echo()  # Add space
+	typer.echo(
+		typer.style(f'Loading workflow from: {typer.style(str(workflow_path.resolve()), fg=typer.colors.MAGENTA)}', bold=True)
+	)
+	typer.echo()  # Add space
 
-    try:
-        workflow_definition_obj = workflow_executor.load_workflow_from_path(workflow_path)
-    except Exception as e:
-        typer.secho(f'Error loading workflow: {e}', fg=typer.colors.RED)
-        raise typer.Exit(code=1)
+	try:
+		# Pass llm_instance to ensure the workflow can use it if needed for as_tool() or run_with_prompt()
+		workflow_obj = Workflow.load_from_file(str(workflow_path), llm=llm_instance)
+	except Exception as e:
+		typer.secho(f'Error loading workflow: {e}', fg=typer.colors.RED)
+		raise typer.Exit(code=1)
 
-    typer.secho('Workflow loaded successfully.', fg=typer.colors.GREEN, bold=True)
-    typer.echo()  # Add space
-    typer.echo(typer.style(f'Running workflow as tool with prompt: "{prompt}"', bold=True))
+	typer.secho('Workflow loaded successfully.', fg=typer.colors.GREEN, bold=True)
+	typer.echo()  # Add space
+	typer.echo(typer.style(f'Running workflow as tool with prompt: "{prompt}"', bold=True))
 
-    try:
-        result = asyncio.run(workflow_definition_obj.run_as_tool(prompt))
-        typer.secho('\nWorkflow execution completed!', fg=typer.colors.GREEN, bold=True)
-        typer.echo(typer.style('Result:', bold=True))
-        typer.echo(json.dumps(result, indent=2))
-    except Exception as e:
-        typer.secho(f'Error running workflow as tool: {e}', fg=typer.colors.RED)
-        raise typer.Exit(code=1)
+	try:
+		result = asyncio.run(workflow_obj.run_as_tool(prompt))
+		typer.secho('\nWorkflow execution completed!', fg=typer.colors.GREEN, bold=True)
+		typer.echo(typer.style('Result:', bold=True))
+		# Ensure result is JSON serializable for consistent output
+		try:
+			typer.echo(json.dumps(json.loads(result), indent=2))  # Assuming result from run_with_prompt is a JSON string
+		except (json.JSONDecodeError, TypeError):
+			typer.echo(result)  # Fallback to string if not a JSON string or not serializable
+	except Exception as e:
+		typer.secho(f'Error running workflow as tool: {e}', fg=typer.colors.RED)
+		raise typer.Exit(code=1)
+
 
 @app.command(name='run-workflow', help='Runs an existing workflow from a JSON file.')
 def run_workflow_command(
@@ -297,20 +307,19 @@ def run_workflow_command(
 	"""
 	Loads and executes a workflow, prompting the user for required inputs.
 	"""
-	if not workflow_executor:
-		typer.secho(
-			'WorkflowExecutor not initialized. Please check your OpenAI API key.',
-			fg=typer.colors.RED,
-		)
-		raise typer.Exit(code=1)
-
 	typer.echo(
 		typer.style(f'Loading workflow from: {typer.style(str(workflow_path.resolve()), fg=typer.colors.MAGENTA)}', bold=True)
 	)
 	typer.echo()  # Add space
 
 	try:
-		workflow_definition_obj = workflow_executor.load_workflow_from_path(workflow_path)
+		# Instantiate Browser and WorkflowController for the Workflow instance
+		# Pass llm_instance for potential agent fallbacks or agentic steps
+		browser_instance = Browser()  # Add any necessary config if required
+		controller_instance = WorkflowController()  # Add any necessary config if required
+		workflow_obj = Workflow.load_from_file(
+			str(workflow_path), llm=llm_instance, browser=browser_instance, controller=controller_instance
+		)
 	except Exception as e:
 		typer.secho(f'Error loading workflow: {e}', fg=typer.colors.RED)
 		raise typer.Exit(code=1)
@@ -318,8 +327,7 @@ def run_workflow_command(
 	typer.secho('Workflow loaded successfully.', fg=typer.colors.GREEN, bold=True)
 
 	inputs = {}
-	# input_schema_dict is now a List[WorkflowInputSchemaDefinition]
-	input_definitions = workflow_definition_obj.inputs_def
+	input_definitions = workflow_obj.inputs_def  # Access inputs_def from the Workflow instance
 
 	if input_definitions:  # Check if the list is not empty
 		typer.echo()  # Add space
@@ -346,9 +354,9 @@ def run_workflow_command(
 				input_val = typer.confirm(full_prompt_text)
 			elif var_type == 'number':
 				input_val = typer.prompt(full_prompt_text, type=float)
-			elif var_type == 'string':
+			elif var_type == 'string':  # Default to string for other unknown types as well
 				input_val = typer.prompt(full_prompt_text, type=str)
-			else:
+			else:  # Should ideally not happen if schema is validated, but good to have a fallback
 				typer.secho(
 					f"Warning: Unknown type '{var_type}' for variable '{input_def.name}'. Treating as string.",
 					fg=typer.colors.YELLOW,
@@ -364,12 +372,17 @@ def run_workflow_command(
 	typer.echo(typer.style('Running workflow...', bold=True))
 
 	try:
-		result = asyncio.run(workflow_executor.run_workflow(workflow_definition_obj, inputs, close_browser_at_end=False))
+		# Call run on the Workflow instance
+		# close_browser_at_end=True is the default for Workflow.run, but explicit for clarity
+		result = asyncio.run(workflow_obj.run(inputs=inputs, close_browser_at_end=True))
 
 		typer.secho('\nWorkflow execution completed!', fg=typer.colors.GREEN, bold=True)
 		typer.echo(typer.style('Result:', bold=True))
-		# User updated this part
-		typer.echo(f'{typer.style(str(len(result)), bold=True)} steps')
+		# Output the number of steps executed, similar to previous behavior
+		typer.echo(f'{typer.style(str(len(result)), bold=True)} steps executed.')
+		# For more detailed results, one might want to iterate through the 'result' list
+		# and print each item, or serialize the whole list to JSON.
+		# For now, sticking to the step count as per original output.
 
 	except Exception as e:
 		typer.secho(f'Error running workflow: {e}', fg=typer.colors.RED)
