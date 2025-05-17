@@ -4,8 +4,8 @@ from pathlib import Path
 # Ensure langchain-openai is installed and OPENAI_API_KEY is set
 from langchain_openai import ChatOpenAI
 
-from src.builder.service import BuilderService
-from src.workflow.service import WorkflowExecutor
+from workflow_use.builder.service import BuilderService
+from workflow_use.workflow.service import WorkflowExecutor
 
 # Instantiate the LLM and the service directly
 llm_instance = ChatOpenAI(model="gpt-4o")  # Or your preferred model

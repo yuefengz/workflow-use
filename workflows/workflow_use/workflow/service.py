@@ -17,15 +17,15 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, create_model
 
-from src.controller.service import WorkflowController
-from src.schema.views import (
+from workflow_use.controller.service import WorkflowController
+from workflow_use.schema.views import (
     AgenticWorkflowStep,
     DeterministicWorkflowStep,
     WorkflowDefinitionSchema,
     WorkflowInputSchemaDefinition,
     WorkflowStep,
 )
-from src.workflow.prompts import WORKFLOW_FALLBACK_PROMPT_TEMPLATE
+from workflow_use.workflow.prompts import WORKFLOW_FALLBACK_PROMPT_TEMPLATE
 
 logger = logging.getLogger(__name__)
 

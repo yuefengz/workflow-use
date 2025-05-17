@@ -8,9 +8,9 @@ import typer
 # Assuming OPENAI_API_KEY is set in the environment
 from langchain_openai import ChatOpenAI
 
-from src.builder.service import BuilderService
-from src.recorder.service import RecordingService  # Added import
-from src.workflow.service import WorkflowExecutor
+from workflow_use.builder.service import BuilderService
+from workflow_use.recorder.service import RecordingService  # Added import
+from workflow_use.workflow.service import WorkflowExecutor
 
 # Placeholder for recorder functionality
 # from src.recorder.service import RecorderService
