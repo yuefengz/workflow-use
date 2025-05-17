@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from browser_use.agent.views import ActionResult
@@ -130,7 +131,11 @@ class WorkflowController(Controller):
                         include_in_memory=True,
                     )
 
+                # Add a small delay and click to ensure the element is focused
                 await locator.fill(params.value)
+                await asyncio.sleep(0.5)
+                await locator.click(force=True)
+                await asyncio.sleep(0.5)
 
                 msg = f'⌨️  Input "{params.value}" into element with CSS selector: {selector_used} (original: {original_selector})'
                 logger.info(msg)
