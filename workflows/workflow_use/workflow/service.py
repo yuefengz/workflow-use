@@ -406,6 +406,8 @@ class Workflow:
 			if close_browser_at_end:
 				# Ensure __aexit__ is called with appropriate args for exception handling if needed
 				# For simplicity, assuming no exception to pass: exc_type, exc_val, exc_tb = None, None, None
+				# wait 3 seconds before closing the browser
+				await asyncio.sleep(3)
 				await self.browser_context.__aexit__(None, None, None)
 
 		# Clean-up browser after finishing workflow
