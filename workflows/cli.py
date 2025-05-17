@@ -115,6 +115,9 @@ def _build_and_save_workflow_from_recording(
 		typer.style('Enter a name for the generated workflow file', bold=True) + f' (e.g., my_search.workflow.json):',
 		default=default_workflow_filename,
 	)
+		# Ensure the file name ends with .json
+	if not workflow_output_name.endswith('.json'):
+		workflow_output_name = f"{workflow_output_name}.json"
 	final_workflow_path = output_dir / workflow_output_name
 
 	try:
