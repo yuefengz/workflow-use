@@ -384,7 +384,8 @@ class Workflow:
         return result
 
     async def run_async(
-        self, inputs: dict[str, Any] | None = None, close_browser_at_end: bool = True
+        self, inputs: dict[str, Any] | None = None, close_browser_at_end: bool = True,
+        cancel_event = None
     ) -> List[Any]:
         """Execute the workflow asynchronously using step dictionaries."""
         runtime_inputs = inputs or {}
@@ -401,6 +402,11 @@ class Workflow:
                 self.steps
             ):  # self.steps now holds dictionaries
                 await asyncio.sleep(0.1)
+                
+                # Check if cancellation was requested
+                if cancel_event and cancel_event.is_set():
+                    logger.info(f"Cancellation requested - stopping workflow execution")
+                    break
 
                 # Use description from the step dictionary
                 step_description = step_dict.description or "No description provided"
@@ -588,10 +594,11 @@ class WorkflowExecutor:
         workflow: Workflow,
         inputs: dict[str, Any] | None = None,
         close_browser_at_end: bool = True,
+        cancel_event = None,
     ) -> List[Any]:
         """Executes a given Workflow instance asynchronously."""
         return await workflow.run_async(
-            inputs=inputs, close_browser_at_end=close_browser_at_end
+            inputs=inputs, close_browser_at_end=close_browser_at_end, cancel_event=cancel_event
         )
 
     async def run_workflow_from_path(
