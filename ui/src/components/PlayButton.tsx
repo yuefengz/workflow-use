@@ -1,34 +1,26 @@
 import React, { useState } from 'react';
-import './PlayButton.css';
-
-interface PlayButtonProps {
-  workflowName: string | null;
-  workflowMetadata: any;
-}
-
-interface InputField {
-  name: string;
-  type: string;
-  required: boolean;
-  value: any;
-}
+import LogViewer from './LogViewer';
+import { PlayButtonProps, InputField } from '../types/playButton.types';
+import '../styles/PlayButton.css';
 
 export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMetadata }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
+  const [showModal, setShowModal] = useState<boolean>(false);
+  const [showLogViewer, setShowLogViewer] = useState<boolean>(false);
+  const [isRunning, setIsRunning] = useState<boolean>(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [inputFields, setInputFields] = useState<InputField[]>([]);
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [logPosition, setLogPosition] = useState<number>(0);
+  const [workflowStatus, setWorkflowStatus] = useState<string>('idle');
 
   const openModal = () => {
     if (!workflowName) return;
     
-    // Reset state
-    setIsModalOpen(true);
+    setShowModal(true);
     setResult(null);
     setError(null);
-    
-    // Initialize input fields from workflow metadata
+
     if (workflowMetadata && workflowMetadata.input_schema) {
       const fields = workflowMetadata.input_schema.map((input: any) => ({
         name: input.name,
@@ -43,7 +35,26 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
   };
 
   const closeModal = () => {
-    setIsModalOpen(false);
+    setShowModal(false);
+    
+    if (!isRunning) {
+      resetState();
+    }
+  };
+  
+  const closeLogViewer = () => {
+    setShowLogViewer(false);
+    resetState();
+  };
+
+  const resetState = () => {
+    setIsRunning(false);
+    setResult(null);
+    setError(null);
+    setInputFields([]);
+    setTaskId(null);
+    setLogPosition(0);
+    setWorkflowStatus('idle');
   };
 
   const handleInputChange = (index: number, value: any) => {
@@ -55,7 +66,6 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
   const executeWorkflow = async () => {
     if (!workflowName) return;
     
-    // Validate required inputs
     const missingInputs = inputFields.filter(field => field.required && !field.value);
     if (missingInputs.length > 0) {
       setError(`Missing required inputs: ${missingInputs.map(f => f.name).join(', ')}`);
@@ -64,55 +74,78 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
     
     setIsRunning(true);
     setError(null);
+    setTaskId(null);
+    setLogPosition(0);
+    setResult(null);
+    setWorkflowStatus('idle');
     
     try {
-      // Convert input fields to the format expected by the API
       const inputs: Record<string, any> = {};
       inputFields.forEach(field => {
         inputs[field.name] = field.value;
       });
       
-      // Call the execute workflow API
       const response = await fetch('http://localhost:8000/api/workflows/execute', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
           name: workflowName,
           inputs
         }),
       });
-      
+
       const data = await response.json();
-      
-      if (response.ok) {
-        setResult(data);
-      } else {
-        setError(data.detail || 'Failed to execute workflow');
-      }
+      setTaskId(data.task_id);
+      setLogPosition(data.log_position);
+      setIsRunning(true);
+      setShowLogViewer(true);
+      setShowModal(false);
     } catch (err) {
-      setError(`Error: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
+      console.error('Failed to execute workflow:', err);
+      setError('An error occurred while executing the workflow');
+    }
+  };
+  
+  const handleStatusChange = (status: string) => {
+    setWorkflowStatus(status);
+    
+    if (status === 'completed' || status === 'failed' || status === 'cancelled') {
       setIsRunning(false);
     }
+  };
+  
+  const handleCancelWorkflow = () => {
+    setWorkflowStatus('cancelling');
+  };
+  
+  const handleWorkflowComplete = (resultData: any) => {
+    setResult({
+      success: true,
+      steps_completed: resultData.length,
+      result: resultData
+    });
+  };
+  
+  const handleWorkflowError = (errorMessage: string) => {
+    setError(errorMessage);
   };
 
   if (!workflowName) return null;
 
   return (
-    <>
+    <div className="play-button-container">
       <button 
         className="play-button" 
         onClick={openModal}
         title="Execute workflow"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-          <path d="M8 5v14l11-7z" />
-        </svg>
+        <span className="play-icon">▶</span>
       </button>
       
-      {isModalOpen && (
+      {/* Parameters Input Modal */}
+      {showModal && (
         <div className="play-modal-overlay">
           <div className="play-modal">
             <div className="play-modal-header">
@@ -123,80 +156,126 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
             <div className="play-modal-content">
               {error && <div className="error-message">{error}</div>}
               
-              {!result ? (
-                <>
-                  {inputFields.length > 0 ? (
-                    <div className="input-fields">
-                      <h4>Input Parameters</h4>
-                      {inputFields.map((field, index) => (
-                        <div key={field.name} className="input-field">
-                          <label>
-                            {field.name}
-                            {field.required && <span className="required">*</span>}
-                            <span className="type-info">({field.type})</span>
-                          </label>
-                          {field.type === 'boolean' ? (
-                            <input
-                              type="checkbox"
-                              checked={field.value}
-                              onChange={(e) => handleInputChange(index, e.target.checked)}
-                            />
-                          ) : field.type === 'number' ? (
-                            <input
-                              type="number"
-                              value={field.value}
-                              onChange={(e) => handleInputChange(index, e.target.value)}
-                              className="input-control"
-                            />
-                          ) : (
-                            <input
-                              type="text"
-                              value={field.value}
-                              onChange={(e) => handleInputChange(index, e.target.value)}
-                              className="input-control"
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p>No input parameters required for this workflow.</p>
-                  )}
-                  
-                  <div className="modal-actions">
-                    <button 
-                      className="cancel-button" 
-                      onClick={closeModal}
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      className="execute-button" 
-                      onClick={executeWorkflow}
-                      disabled={isRunning}
-                    >
-                      {isRunning ? 'Executing...' : 'Execute Workflow'}
-                    </button>
+              {/* Input Fields Section */}
+              <>
+                {inputFields.length > 0 ? (
+                  <div className="input-fields">
+                    <h4>Input Parameters</h4>
+                    {inputFields.map((field, index) => (
+                      <div key={field.name} className="input-field">
+                        <label>
+                          {field.name}
+                          {field.required && <span className="required">*</span>}
+                          <span className="type-info">({field.type})</span>
+                        </label>
+                        {field.type === 'boolean' ? (
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={(e) => handleInputChange(index, e.target.checked)}
+                          />
+                        ) : field.type === 'number' ? (
+                          <input
+                            type="number"
+                            value={field.value}
+                            onChange={(e) => handleInputChange(index, e.target.value)}
+                            className="input-control"
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            value={field.value}
+                            onChange={(e) => handleInputChange(index, e.target.value)}
+                            className="input-control"
+                          />
+                        )}
+                      </div>
+                    ))}
                   </div>
-                </>
-              ) : (
-                <div className="result-container">
-                  <div className="result-header">
-                    <h4>Execution Complete</h4>
-                    <div className="steps-completed">
-                      Steps completed: <strong>{result.steps_completed}</strong>
-                    </div>
-                  </div>
-                  
-                  <div className="result-data">
-                    <pre>{JSON.stringify(result.result, null, 2)}</pre>
-                  </div>
+                ) : (
+                  <p>No input parameters required for this workflow.</p>
+                )}
+                
+                <div className="modal-actions">
+                  <button 
+                    className="cancel-button" 
+                    onClick={closeModal}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    className="execute-button" 
+                    onClick={executeWorkflow}
+                    disabled={isRunning}
+                  >
+                    Execute Workflow
+                  </button>
                 </div>
-              )}
+              </>
             </div>
           </div>
         </div>
       )}
-    </>
+      
+      {/* Separate Log Viewer */}
+      {showLogViewer && taskId && (
+        <div className="log-viewer-overlay">
+          <div className="log-viewer-modal">
+            <div className="log-viewer-header">
+              <div>Workflow Execution {workflowStatus !== 'running' ? `(${workflowStatus.charAt(0).toUpperCase() + workflowStatus.slice(1)})` : ''}</div>
+            </div>
+            
+            <div className="log-viewer-content">
+              <LogViewer 
+                taskId={taskId} 
+                initialPosition={logPosition}
+                onStatusChange={handleStatusChange}
+                onComplete={handleWorkflowComplete}
+                onError={handleWorkflowError}
+                onCancel={handleCancelWorkflow}
+                onClose={closeLogViewer}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Results Modal (only shown if we want a separate results view) */}
+      {false && result && (
+        <div className="play-modal-overlay">
+          <div className="play-modal">
+            <div className="play-modal-header">
+              <h3>Execution Results</h3>
+              <button className="close-button" onClick={closeModal}>×</button>
+            </div>
+            
+            <div className="play-modal-content">
+              <div className="result-container">
+                <div className="result-header">
+                  <h4>Execution Complete</h4>
+                  <div className="steps-completed">
+                    Steps completed: <strong>{result.steps_completed}</strong>
+                  </div>
+                </div>
+                
+                <div className="result-output">
+                  <h5>Output:</h5>
+                  <pre>{JSON.stringify(result.output, null, 2)}</pre>
+                </div>
+                
+                <div className="modal-actions">
+                  <button 
+                    className="close-button" 
+                    onClick={closeModal}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };

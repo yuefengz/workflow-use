@@ -1,5 +1,5 @@
-import type { Node, BuiltInNode } from '@xyflow/react';
 import { z } from 'zod';
+import type { Node, BuiltInNode } from '@xyflow/react';
 
 export type PositionLoggerNode = Node<{ label: string }, 'position-logger'>;
 export type AppNode = BuiltInNode | PositionLoggerNode;
@@ -43,3 +43,16 @@ export const workflowSchema = z.object({
 /* ── Inferred TypeScript type ───────────────────────────────────────– */
 export type Workflow = z.infer<typeof workflowSchema>;
 
+export interface WorkflowStep {
+  description: string;
+  type: string;
+  [key: string]: any;
+}
+
+export interface WorkflowMetadata {
+  name: string;
+  description: string;
+  version: string;
+  input_schema: any[];
+  workflow_analysis?: string;
+}

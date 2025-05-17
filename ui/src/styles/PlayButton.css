@@ -1,19 +1,16 @@
 .play-button {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 50px;
-  height: 50px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background-color: #2a7ac5;
-  color: white;
+  background-color: #2a2a2a;
+  color: #fff;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   transition: background-color 0.2s, transform 0.2s;
 }
 
@@ -45,7 +42,7 @@
   color: #fff;
   border-radius: 8px;
   width: 600px;
-  max-width: 90vw;
+  max-width: 80vw;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
@@ -67,6 +64,47 @@
 }
 
 .play-modal-content {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Log viewer modal styles */
+.log-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.log-viewer-modal {
+  background-color: #2a2a2a;
+  color: #fff;
+  border-radius: 8px;
+  width: 650px;
+  max-width: 80vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.log-viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #444;
+}
+
+.log-viewer-content {
   padding: 16px;
   overflow-y: auto;
   flex: 1;

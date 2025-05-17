@@ -1,0 +1,184 @@
+.sidebar {
+  width: 250px; 
+  border-right: 1px solid #444; 
+  padding: 12px; 
+  background: #2a2a2a;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.sidebar-logo-container {
+  display: flex; 
+  justify-content: center; 
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.sidebar-logo {
+  max-width: 80%; 
+  height: auto;
+  max-height: 60px;
+}
+
+.sidebar-title {
+  margin-top: 0; 
+  font-size: 16px; 
+  color: #ddd;
+}
+
+.sidebar-list {
+  list-style: none; 
+  padding: 0; 
+  margin: 0;
+}
+
+.workflow-button {
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  padding: 5px 0;
+  cursor: pointer;
+  color: #ccc;
+}
+
+.workflow-button--active {
+  font-weight: 600;
+  color: #7ac5ff;
+}
+
+.workflow-details-container {
+  padding: 8px 0 12px 16px;
+  border-left: 1px solid #444;
+  margin: 4px 0 8px 4px;
+}
+
+.workflow-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.sidebar-details-title {
+  margin: 0; 
+  font-size: 14px; 
+  color: #ddd;
+}
+
+.edit-button {
+  background: #444;
+  border: none;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.workflow-metadata-section {
+  margin-bottom: 8px;
+}
+
+.metadata-label {
+  font-size: 12px; 
+  color: #aaa;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.metadata-description {
+  font-size: 13px;
+}
+
+.metadata-input {
+  width: 100%;
+  background: #333;
+  border: 1px solid #555;
+  color: #fff;
+  padding: 6px;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.metadata-textarea {
+  width: 100%;
+  background: #333;
+  border: 1px solid #555;
+  color: #fff;
+  padding: 6px;
+  border-radius: 4px;
+  min-height: 60px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.metadata-input-container {
+  margin-bottom: 8px;
+}
+
+.button-container {
+  display: flex; 
+  gap: 8px; 
+  justify-content: flex-end;
+}
+
+.cancel-button {
+  background: #555;
+  border: none;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.save-button {
+  background: #2a7ac5;
+  border: none;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.save-button--submitting {
+  opacity: 0.7;
+}
+
+.parameter-list {
+  margin: 0; 
+  padding: 0; 
+  padding-left: 16px; 
+  font-size: 13px;
+}
+
+.parameter-item {
+  margin-bottom: 4px;
+}
+
+.parameter-name {
+  color: #7ac5ff;
+}
+
+.parameter-type {
+  color: #aaa; 
+  font-size: 11px;
+}
+
+.parameter-required {
+  color: #ff7a7a; 
+  font-size: 11px;
+}
+
+.version-label {
+  font-size: 11px; 
+  color: #888; 
+  margin-left: 5px;
+}
+
+.workflow-name {
+  color: #ccc;
+}

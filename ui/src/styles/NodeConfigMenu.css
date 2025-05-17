@@ -63,11 +63,11 @@
   background: #3a8ad5;
 }
 
-.cancel-button {
+.cancel-button-config {
   background: #555;
 }
 
-.cancel-button:hover {
+.cancel-button-config:hover {
   background: #666;
 }
 

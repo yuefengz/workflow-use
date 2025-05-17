@@ -1,35 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import type { Node } from '@xyflow/react';
+import { StepData, NodeConfigMenuProps } from '../types/NodeConfigMenu.types';
+import '../styles/NodeConfigMenu.css';
 
-// Define the step data interface based on the schema
-interface StepData {
-  description: string;
-  output: any | null;
-  timestamp: number | null;
-  tabId: number | null;
-  type: 'navigation' | 'click' | 'select_change' | 'input';
-  url?: string;
-  cssSelector?: string;
-  xpath?: string;
-  elementTag?: string;
-  elementText?: string;
-  selectedText?: string;
-  value?: string;
-}
-
-// Extend the Node data type to include stepData
-export interface NodeData extends Record<string, unknown> {
-  label: string;
-  stepData: StepData;
-}
-
-interface NodeConfigMenuProps {
-  node: Node<NodeData> | null;
-  onClose: () => void;
-  workflowFilename: string | null;
-}
-
-// Helper function to convert string to title case
 const toTitleCase = (str: string): string => {
   return str.split('_').map(word => {
     return word.charAt(0).toUpperCase() + word.slice(1);
@@ -42,14 +14,10 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  // Create a local copy of the node data that we can update
   const [localStepData, setLocalStepData] = useState<StepData | null>(null);
   
-  // Check if the node is valid
   if (!node || !node.data || !node.data.stepData) return null;
   
-  // Update the local step data whenever the node changes
-  // This ensures we always display the correct data for the selected node
   useEffect(() => {
     if (node && node.data && node.data.stepData) {
       setLocalStepData(node.data.stepData);
@@ -60,7 +28,6 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
     }
   }, [node]);
   
-  // Add event listener for Escape key to close the modal
   useEffect(() => {
     const handleEscKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -68,33 +35,26 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
       }
     };
     
-    // Add event listener when component mounts
     document.addEventListener('keydown', handleEscKey);
     
-    // Remove event listener when component unmounts
     return () => {
       document.removeEventListener('keydown', handleEscKey);
     };
   }, [onClose]);
   
-  // Use local step data instead of directly from node
   const stepData: StepData = localStepData || node.data.stepData;
   
-  // Initialize edited data if entering edit mode
   if (isEditing && !editedStepData) {
     setEditedStepData({...stepData});
   }
   
-  // State for CSS selector editing
   const [cssSelectors, setCssSelectors] = useState<string[]>([]);
   const [newSelector, setNewSelector] = useState('');
   
-  // Initialize CSS selectors when entering edit mode
   if (isEditing && editedStepData?.cssSelector && cssSelectors.length === 0) {
     setCssSelectors(editedStepData.cssSelector.split(' '));
   }
   
-  // Handle input changes
   const handleInputChange = (field: keyof StepData, value: any) => {
     if (editedStepData) {
       setEditedStepData({
@@ -104,7 +64,6 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
     }
   };
   
-  // Handle CSS selector changes
   const handleAddSelector = () => {
     if (newSelector.trim() !== '') {
       const updatedSelectors = [...cssSelectors, newSelector.trim()];
@@ -125,7 +84,6 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
     const updatedSelectors = cssSelectors.filter((_, i) => i !== index);
     setCssSelectors(updatedSelectors);
     
-    // Update the editedStepData
     if (editedStepData) {
       setEditedStepData({
         ...editedStepData,
@@ -134,11 +92,9 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
     }
   };
   
-  // Handle form submission
   const handleSubmit = async () => {
     if (!editedStepData) return;
     
-    // Ensure CSS selectors are properly joined
     if (cssSelectors.length > 0) {
       editedStepData.cssSelector = cssSelectors.join(' ');
     }
@@ -154,7 +110,7 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          filename: workflowFilename,  // Use the workflow filename passed as prop
+          filename: workflowFilename,
           nodeId: node.id,
           stepData: editedStepData
         }),
@@ -165,9 +121,7 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
       if (result.success) {
         setSuccess(true);
         setIsEditing(false);
-        // Update the local step data to reflect changes
         setLocalStepData(editedStepData);
-        // Update the node data directly to reflect changes immediately
         if (node && node.data) {
           node.data.stepData = editedStepData;
         }
@@ -181,7 +135,6 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
     }
   };
   
-  // Cancel editing
   const handleCancel = () => {
     setIsEditing(false);
     setEditedStepData(null);
@@ -411,7 +364,7 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
               </button>
               <button 
                 onClick={handleCancel}
-                className="edit-button cancel-button"
+                className="edit-button cancel-button-config"
               >
                 Cancel
               </button>

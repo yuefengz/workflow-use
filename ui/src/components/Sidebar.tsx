@@ -1,14 +1,7 @@
 import React, { useState } from 'react';
-import { WorkflowMetadata } from '../jsonToFlow';
-
-interface SidebarProps {
-  workflows: string[];
-  onSelect: (wf: string) => void;
-  selected: string | null;
-  workflowMetadata: WorkflowMetadata | null;
-  onUpdateMetadata: (metadata: WorkflowMetadata) => Promise<void>;
-  allWorkflowsMetadata?: Record<string, WorkflowMetadata>;
-}
+import { WorkflowMetadata } from '../types/Workflow.types';
+import { SidebarProps } from '../types/Sidebar.types';
+import '../styles/Sidebar.css';
 
 export function Sidebar({ workflows, onSelect, selected, workflowMetadata, onUpdateMetadata, allWorkflowsMetadata = {} }: SidebarProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -58,88 +51,47 @@ export function Sidebar({ workflows, onSelect, selected, workflowMetadata, onUpd
     
     if (isEditing) {
       return (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ marginBottom: 8 }}>
-            <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: 4 }}>Name</label>
+        <div>
+          <div className="metadata-input-container">
+            <label className="metadata-label">Name</label>
             <input 
               type="text" 
               value={editedMetadata?.name || ''}
               onChange={(e) => handleInputChange('name', e.target.value)}
-              style={{
-                width: '100%',
-                background: '#333',
-                border: '1px solid #555',
-                color: '#fff',
-                padding: '6px',
-                borderRadius: '4px',
-                boxSizing: 'border-box'
-              }}
+              className="metadata-input"
             />
           </div>
           
-          <div style={{ marginBottom: 8 }}>
-            <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: 4 }}>Version</label>
+          <div className="metadata-input-container">
+            <label className="metadata-label">Version</label>
             <input 
               type="text" 
               value={editedMetadata?.version || ''}
               onChange={(e) => handleInputChange('version', e.target.value)}
-              style={{
-                width: '100%',
-                background: '#333',
-                border: '1px solid #555',
-                color: '#fff',
-                padding: '6px',
-                borderRadius: '4px',
-                boxSizing: 'border-box'
-              }}
+              className="metadata-input"
             />
           </div>
           
-          <div style={{ marginBottom: 8 }}>
-            <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: 4 }}>Description</label>
+          <div className="metadata-input-container">
+            <label className="metadata-label">Description</label>
             <textarea 
               value={editedMetadata?.description || ''}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              style={{
-                width: '100%',
-                background: '#333',
-                border: '1px solid #555',
-                color: '#fff',
-                padding: '6px',
-                borderRadius: '4px',
-                minHeight: '60px',
-                resize: 'vertical',
-                boxSizing: 'border-box'
-              }}
+              className="metadata-textarea"
             />
           </div>
           
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <div className="button-container">
             <button 
               onClick={handleCancel}
-              style={{
-                background: '#555',
-                border: 'none',
-                color: '#fff',
-                padding: '6px 12px',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
+              className="cancel-button"
             >
               Cancel
             </button>
             <button 
               onClick={handleSubmit}
               disabled={isSubmitting}
-              style={{
-                background: '#2a7ac5',
-                border: 'none',
-                color: '#fff',
-                padding: '6px 12px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                opacity: isSubmitting ? 0.7 : 1
-              }}
+              className={`save-button ${isSubmitting ? 'save-button--submitting' : ''}`}
             >
               {isSubmitting ? 'Saving...' : 'Save'}
             </button>
@@ -150,20 +102,20 @@ export function Sidebar({ workflows, onSelect, selected, workflowMetadata, onUpd
     
     return (
       <div>
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: '12px', color: '#aaa' }}>Description</div>
-          <div style={{ fontSize: '13px' }}>{workflowMetadata.description}</div>
+        <div className="workflow-metadata-section">
+          <div className="metadata-label">Description</div>
+          <div className="metadata-description">{workflowMetadata.description}</div>
         </div>
         
         {workflowMetadata.input_schema && workflowMetadata.input_schema.length > 0 && (
           <div>
-            <div style={{ fontSize: '12px', color: '#aaa', marginBottom: 4 }}>Input Parameters</div>
-            <ul style={{ margin: 0, padding: 0, paddingLeft: 16, fontSize: '13px' }}>
+            <div className="metadata-label">Input Parameters</div>
+            <ul className="parameter-list">
               {workflowMetadata.input_schema.map((input, index) => (
-                <li key={index} style={{ marginBottom: 4 }}>
-                  <span style={{ color: '#7ac5ff' }}>{input.name}</span>
-                  <span style={{ color: '#aaa', fontSize: '11px' }}> ({input.type})</span>
-                  {input.required && <span style={{ color: '#ff7a7a', fontSize: '11px' }}> *required</span>}
+                <li key={index} className="parameter-item">
+                  <span className="parameter-name">{input.name}</span>
+                  <span className="parameter-type"> ({input.type})</span>
+                  {input.required && <span className="parameter-required"> *required</span>}
                 </li>
               ))}
             </ul>
@@ -173,80 +125,48 @@ export function Sidebar({ workflows, onSelect, selected, workflowMetadata, onUpd
     );
   };
   
-  // Function to get workflow display name
   const getWorkflowDisplayName = (workflowId: string) => {
-    // For the selected workflow, use its metadata name
     if (selected === workflowId && workflowMetadata) {
       return (
         <>
           {workflowMetadata.name}
           {workflowMetadata.version && 
-            <span style={{ fontSize: '11px', color: '#888', marginLeft: '5px' }}>v{workflowMetadata.version}</span>
+            <span className="version-label">v{workflowMetadata.version}</span>
           }
         </>
       );
     }
     
-    // For non-selected workflows, use the cached metadata if available
     if (allWorkflowsMetadata && allWorkflowsMetadata[workflowId]) {
       return (
         <>
           {allWorkflowsMetadata[workflowId].name}
           {allWorkflowsMetadata[workflowId].version && 
-            <span style={{ fontSize: '11px', color: '#888', marginLeft: '5px' }}>v{allWorkflowsMetadata[workflowId].version}</span>
+            <span className="version-label">v{allWorkflowsMetadata[workflowId].version}</span>
           }
         </>
       );
     }
     
-    // If no metadata is available, show the filename
-    return <span style={{ color: '#ccc' }}>{workflowId}</span>;
+    return <span className="workflow-name">{workflowId}</span>;
   };
   
   return (
-    <div style={{ 
-      width: 250, 
-      borderRight: '1px solid #444', 
-      padding: 12, 
-      background: '#2a2a2a',
-      color: '#fff',
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'auto',
-      boxSizing: 'border-box'
-    }}>
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        marginBottom: 16,
-        alignItems: 'center'
-      }}>
+    <div className="sidebar">
+      <div className="sidebar-logo-container">
         <img 
           src="/browseruse.png" 
           alt="Browser Use Logo" 
-          style={{ 
-            maxWidth: '80%', 
-            height: 'auto',
-            maxHeight: 60
-          }} 
+          className="sidebar-logo"
         />
       </div>
-      <h3 style={{ marginTop: 0, fontSize: '16px', color: '#ddd' }}>Workflows</h3>
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+      <h3 className="sidebar-title">Workflows</h3>
+      <ul className="sidebar-list">
         {workflows.map((wf) => (
           <React.Fragment key={wf}>
             <li>
               <button
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '5px 0',
-                  cursor: 'pointer',
-                  fontWeight: wf === selected ? 600 : 400,
-                  color: wf === selected ? '#7ac5ff' : '#ccc',
-                }}
+                className={`workflow-button ${wf === selected ? 'workflow-button--active' : ''}`}
                 onClick={() => onSelect(wf)}
               >
                 {getWorkflowDisplayName(wf)}
@@ -254,34 +174,13 @@ export function Sidebar({ workflows, onSelect, selected, workflowMetadata, onUpd
             </li>
 
             {workflowMetadata && selected === wf && (
-              <li
-                style={{
-                  padding: '8px 0 12px 16px',
-                  borderLeft: '1px solid #444',
-                  margin: '4px 0 8px 4px',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 8,
-                  }}
-                >
-                  <h4 style={{ margin: 0, fontSize: '14px', color: '#ddd' }}>Details</h4>
+              <li className="workflow-details-container">
+                <div className="workflow-details-header">
+                  <h4 className="sidebar-details-title">Details</h4>
                   {!isEditing && (
                     <button
                       onClick={handleEditClick}
-                      style={{
-                        background: '#444',
-                        border: 'none',
-                        color: '#fff',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                      }}
+                      className="edit-button"
                     >
                       Edit
                     </button>
