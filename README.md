@@ -39,10 +39,16 @@ cp .env.example .env # add your OPENAI_API_KEY to the .env file
 ```
 
 
-## Run example workflow
+## Run workflow as tool
 
 ```bash
 python cli.py run-as-tool examples/example.workflow.json --prompt "fill the form with example data"
+```
+
+## Run workflow with predefined variables
+
+```bash
+python cli.py run-workflow examples/example.workflow.json 
 ```
 
 ## Record your own workflow
