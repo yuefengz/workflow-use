@@ -11,9 +11,9 @@ from langchain_core.messages import HumanMessage
 from langchain_core.prompts import PromptTemplate
 from pydantic import ValidationError
 
-from src.builder.prompts import WORKFLOW_BUILDER_PROMPT_TEMPLATE
-from src.controller.service import WorkflowController
-from src.schema.views import WorkflowDefinitionSchema
+from workflow_use.builder.prompts import WORKFLOW_BUILDER_PROMPT_TEMPLATE
+from workflow_use.controller.service import WorkflowController
+from workflow_use.schema.views import WorkflowDefinitionSchema
 
 logger = logging.getLogger(__name__)
 

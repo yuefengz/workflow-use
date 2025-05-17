@@ -5,8 +5,8 @@ from browser_use.agent.views import ActionResult
 from browser_use.browser.context import BrowserContext
 from browser_use.controller.service import Controller
 
-from src.controller.utils import get_best_element_handle
-from src.controller.views import (
+from workflow_use.controller.utils import get_best_element_handle
+from workflow_use.controller.views import (
     ClickElementDeterministicAction,
     InputTextDeterministicAction,
     KeyPressDeterministicAction,
