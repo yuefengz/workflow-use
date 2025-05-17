@@ -23,11 +23,17 @@ Follow these rules when generating the output JSON:
    - Only use an empty "input_schema" if no dynamic inputs are relevant after careful analysis. Justify this choice in the "workflow_analysis".
 2. "steps" is an array of dictionaries executed sequentially.
    - Each dictionary MUST include a `"type"` field.
-   - **Agent events** → `"type": "agent"` **MUST** also include a `"task"`
-     string that clearly explains what the agent should achieve **from the
-     user's point of view**. A short `"description"` of *why* the step
-     requires agent reasoning is encouraged, plus an optional `"max_steps"`
-     integer (defaults to 5 if omitted). Keep agent tasks very specific (always prefer small tasks). If you need to define multiple consecutive goals please output multiple agent tasks one after the other.
+   - **Agentic Steps ("type": "agent")**:
+     - Use `"type": "agent"` for tasks where the user must interact with or select from frequently changing content, even if the website’s structure is consistent. Examples include choosing an item from a dynamic list (e.g., a restaurant from search results) or selecting a specific value from a variable set (e.g., a date from a calendar that changes with the month).
+     - **MUST** include a `"task"` string describing the user’s goal for the step from their perspective (e.g., "Select the restaurant named {{restaurant_name}} from the search results").
+     - Include a `"description"` explaining why agentic reasoning is needed (e.g., "The list of restaurants varies with each search, requiring the agent to find the specified one").
+     - Optionally include `"max_steps"` (defaults to 5) to limit agent exploration.
+     - **Replace deterministic steps with agentic steps** when the task involves:
+       - Selecting from a list or set of options that changes frequently (e.g., restaurants, products, or search results).
+       - Interacting with time-sensitive or context-dependent elements (e.g., picking a date from a calendar or a time slot from a schedule).
+       - Evaluating content to match user input (e.g., finding a specific item based on its name or attributes).
+     - Break complex tasks into multiple specific agentic steps rather than one broad task.
+     - **Use the user’s goal (if provided) or inferred intent from the recording** to identify where agentic steps are needed for dynamic content, even if the recording uses deterministic steps.
    - **Deterministic events** → keep the original recorder event structure. The
      value of `"type"` MUST match **exactly** one of the available action
      names listed below; all additional keys are interpreted as parameters for
