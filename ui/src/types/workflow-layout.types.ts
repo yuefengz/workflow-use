@@ -56,3 +56,11 @@ export interface WorkflowMetadata {
   input_schema: any[];
   workflow_analysis?: string;
 }
+
+export interface WorkflowItemProps {
+  id: string;
+  selected: boolean;
+  metadata?: WorkflowMetadata;
+  onSelect: (id: string) => void;
+  onUpdateMetadata: (m: WorkflowMetadata) => Promise<void>;
+}
