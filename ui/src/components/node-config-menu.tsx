@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { StepData, NodeConfigMenuProps } from '../types/node-config-menu.types';
-import '../styles/node-config-menu.css';
 
 const toTitleCase = (str: string): string => {
   return str.split('_').map(word => {
@@ -144,19 +143,27 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
   };
 
   return (
-    <div className="node-config-menu">
-      <div className="node-config-menu-header">
+    <div className="fixed top-5 right-5 z-[1000] w-[450px] max-w-[90vw] max-h-[85vh] overflow-y-auto rounded-lg bg-[#2a2a2a] text-white shadow-2xl">
+      {/* header */}
+      <div className="flex items-center justify-between border-b border-gray-700 p-4">
         <div>{stepData.description}</div>
-        <button onClick={onClose} className="close-button">×</button>
+        <button
+          onClick={onClose}
+          className="text-2xl text-gray-400 hover:text-white"
+        >
+          ×
+        </button>
       </div>
-      <div className="node-config-menu-content">
-        {/* Core fields */}
-        <div className="node-config-menu-item">
-          <strong>Step Type:</strong> {isEditing ? (
-            <select 
+
+      <div className="p-4">
+        {/* step type */}
+        <div className="mb-3 break-words">
+          <strong>Step Type:</strong>{' '}
+          {isEditing ? (
+            <select
               value={editedStepData?.type || 'navigation'}
-              onChange={(e) => handleInputChange('type', e.target.value)}
-              className="edit-input"
+              onChange={e => handleInputChange('type', e.target.value)}
+              className="ml-1 rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
             >
               <option value="navigation">Navigation</option>
               <option value="click">Click</option>
@@ -167,221 +174,247 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
             toTitleCase(stepData.type)
           )}
         </div>
+
+        {/* tab id */}
         {stepData.tabId !== null && !isEditing && (
-          <div className="node-config-menu-item">
+          <div className="mb-3">
             <strong>Tab ID:</strong> {stepData.tabId}
           </div>
         )}
-        {/* URL field */}
-        {((stepData.url || isEditing) && node.id === '0') && (
-          <div className="node-config-menu-item">
+
+        {/* URL (only for first node) */}
+        {(stepData.url || isEditing) && node.id === '0' && (
+          <div className="mb-3">
             <strong>URL:</strong>
             {isEditing ? (
-              <div style={{ marginTop: '4px' }}>
-                <input 
-                  type="text" 
-                  value={editedStepData?.url || ''}
-                  onChange={(e) => handleInputChange('url', e.target.value)}
-                  className="edit-input full-width"
-                />
-              </div>
+              <input
+                type="text"
+                value={editedStepData?.url || ''}
+                onChange={e => handleInputChange('url', e.target.value)}
+                className="mt-1 w-full rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
+              />
             ) : (
-              <a 
-                href={stepData.url || ''} 
-                target="_blank" 
+              <a
+                href={stepData.url || ''}
+                target="_blank"
                 rel="noopener noreferrer"
                 title={stepData.url || ''}
-                style={{ wordBreak: 'break-all' }}
+                className="ml-1 break-all text-blue-400 hover:underline"
               >
-                {stepData.url && stepData.url.length > 40 ? `${stepData.url.substring(0, 37)}...` : stepData.url}
+                {stepData.url && stepData.url.length > 40
+                  ? `${stepData.url.slice(0, 37)}...`
+                  : stepData.url}
               </a>
             )}
           </div>
         )}
+
+        {/* CSS selectors */}
         {(stepData.cssSelector || isEditing) && (
-          <div className="node-config-menu-item">
+          <div className="mb-3">
             <strong>CSS Selectors:</strong>
             {isEditing ? (
-              <div className="selector-editor">
-                <div className="selector-chips">
-                  {cssSelectors.map((selector, index) => (
-                    <div key={index} className="selector-chip-container">
-                      <span 
-                        className="selector-chip" 
-                        title={selector.length > 40 ? selector : undefined}
+              <div className="mt-2">
+                {/* chips */}
+                <div className="flex flex-wrap gap-2">
+                  {cssSelectors.map((sel, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center rounded bg-gray-700 pl-2"
+                    >
+                      <span
+                        title={sel.length > 65 ? sel : undefined}
+                        className="mr-1 whitespace-nowrap text-xs"
                       >
-                        {selector.length > 40 ? `${selector.substring(0, 37)}...` : selector}
+                        {sel.length > 65 ? `${sel.slice(0, 62)}...` : sel}
                       </span>
-                      <button 
-                        className="selector-remove" 
-                        onClick={() => handleRemoveSelector(index)}
+                      <button
+                        onClick={() => handleRemoveSelector(idx)}
+                        className="px-1 text-lg text-gray-400 hover:text-red-400"
                       >
                         ×
                       </button>
                     </div>
                   ))}
                 </div>
-                <div className="selector-input-container">
+
+                {/* add new */}
+                <div className="mt-2 flex gap-2">
                   <input
                     type="text"
                     value={newSelector}
-                    onChange={(e) => setNewSelector(e.target.value)}
-                    className="edit-input"
+                    onChange={e => setNewSelector(e.target.value)}
+                    className="flex-1 rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
                     placeholder="Add selector..."
                   />
-                  <button 
-                    className="selector-add" 
+                  <button
                     onClick={handleAddSelector}
+                    className="rounded bg-blue-400 px-2 text-lg leading-none hover:bg-blue-500"
                   >
                     +
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="selector-chips">
-                {stepData.cssSelector && stepData.cssSelector.split(' ').map((selector, index) => (
-                  <span 
-                    key={index} 
-                    className="selector-chip"
-                    title={selector.length > 40 ? selector : undefined}
-                  >
-                    {selector.length > 40 ? `${selector.substring(0, 37)}...` : selector}
-                  </span>
-                ))}
+              <div className="mt-1 flex flex-wrap gap-2">
+                {stepData.cssSelector
+                  ?.split(' ')
+                  .map((sel, idx) => (
+                    <span
+                      key={idx}
+                      title={sel.length > 65 ? sel : undefined}
+                      className="rounded bg-gray-700 px-2 py-0.5 text-xs"
+                    >
+                      {sel.length > 65 ? `${sel.slice(0, 62)}...` : sel}
+                    </span>
+                  ))}
               </div>
             )}
           </div>
         )}
+
+        {/* XPath */}
         {(stepData.xpath || isEditing) && (
-          <div className="node-config-menu-item">
+          <div className="mb-3 break-all">
             <strong>XPath:</strong>
             {isEditing ? (
-              <div style={{ marginTop: '4px' }}>
-                <input
-                  type="text"
-                  value={editedStepData?.xpath || ''}
-                  onChange={(e) => handleInputChange('xpath', e.target.value)}
-                  className="edit-input full-width"
-                />
-              </div>
+              <input
+                type="text"
+                value={editedStepData?.xpath || ''}
+                onChange={e => handleInputChange('xpath', e.target.value)}
+                className="mt-1 w-full rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
+              />
             ) : (
-              <div className="selector-chips">
-                <span 
-                  className="selector-chip" 
-                  title={stepData.xpath}
-                  style={{ wordBreak: 'break-all' }}
-                >
-                  {stepData.xpath && stepData.xpath.length > 40 ? `${stepData.xpath.substring(0, 37)}...` : stepData.xpath}
-                </span>
-              </div>
+              <span className="ml-1">
+                {stepData.xpath && stepData.xpath.length > 40
+                  ? `${stepData.xpath.slice(0, 37)}...`
+                  : stepData.xpath}
+              </span>
             )}
           </div>
         )}
+
+        {/* Element tag */}
         {(stepData.elementTag || isEditing) && (
-          <div className="node-config-menu-item">
-            <strong>Element Tag:</strong>
+          <div className="mb-3">
+            <strong>Element Tag:</strong>{' '}
             {isEditing ? (
-              <div style={{ marginTop: '4px' }}>
-                <input
-                  type="text"
-                  value={editedStepData?.elementTag || ''}
-                  onChange={(e) => handleInputChange('elementTag', e.target.value)}
-                  className="edit-input"
-                />
-              </div>
+              <input
+                type="text"
+                value={editedStepData?.elementTag || ''}
+                onChange={e => handleInputChange('elementTag', e.target.value)}
+                className="mt-1 rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
+              />
             ) : (
-              <span style={{ marginLeft: '4px' }}>{"<"}{stepData.elementTag}{">"}          </span>
+              <span className="ml-1">{`<${stepData.elementTag}>`}</span>
             )}
           </div>
         )}
+
+        {/* Element text */}
         {(stepData.elementText || isEditing) && (
-          <div className="node-config-menu-item">
+          <div className="mb-3 break-words">
             <strong>Element Text:</strong>
             {isEditing ? (
-              <div style={{ marginTop: '4px' }}>
-                <input
-                  type="text"
-                  value={editedStepData?.elementText || ''}
-                  onChange={(e) => handleInputChange('elementText', e.target.value)}
-                  className="edit-input full-width"
-                />
-              </div>
+              <input
+                type="text"
+                value={editedStepData?.elementText || ''}
+                onChange={e =>
+                  handleInputChange('elementText', e.target.value)
+                }
+                className="mt-1 w-full rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
+              />
             ) : (
-              <div style={{ wordBreak: 'break-word', marginTop: '4px' }}>{stepData.elementText}</div>
+              <div className="mt-1">{stepData.elementText}</div>
             )}
           </div>
         )}
+
+        {/* Selected text */}
         {(stepData.selectedText || isEditing) && (
-          <div className="node-config-menu-item">
+          <div className="mb-3 break-words">
             <strong>Selected Text:</strong>
             {isEditing ? (
-              <div style={{ marginTop: '4px' }}>
-                <input
-                  type="text"
-                  value={editedStepData?.selectedText || ''}
-                  onChange={(e) => handleInputChange('selectedText', e.target.value)}
-                  className="edit-input full-width"
-                />
-              </div>
+              <input
+                type="text"
+                value={editedStepData?.selectedText || ''}
+                onChange={e =>
+                  handleInputChange('selectedText', e.target.value)
+                }
+                className="mt-1 w-full rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
+              />
             ) : (
-              <div style={{ wordBreak: 'break-word', marginTop: '4px' }}>{stepData.selectedText}</div>
+              <div className="mt-1">{stepData.selectedText}</div>
             )}
           </div>
         )}
+
+        {/* Value */}
         {(stepData.value || isEditing) && (
-          <div className="node-config-menu-item">
+          <div className="mb-3 break-words">
             <strong>Value:</strong>
             {isEditing ? (
-              <div style={{ marginTop: '4px' }}>
-                <input
-                  type="text"
-                  value={editedStepData?.value || ''}
-                  onChange={(e) => handleInputChange('value', e.target.value)}
-                  className="edit-input full-width"
-                />
-              </div>
+              <input
+                type="text"
+                value={editedStepData?.value || ''}
+                onChange={e => handleInputChange('value', e.target.value)}
+                className="mt-1 w-full rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
+              />
             ) : (
-              <div style={{ wordBreak: 'break-word', marginTop: '4px' }}>{stepData.value}</div>
+              <div className="mt-1">{stepData.value}</div>
             )}
           </div>
         )}
-        
+
+        {/* output */}
         {stepData.output && (
-          <div className="node-config-menu-data">
+          <div className="mt-4">
             <strong>Output:</strong>
-            <pre>{JSON.stringify(stepData.output, null, 2)}</pre>
+            <pre className="mt-1 max-h-[300px] overflow-auto rounded bg-[#333] p-3 text-xs">
+              {JSON.stringify(stepData.output, null, 2)}
+            </pre>
           </div>
         )}
-        <div className="header-buttons">
+
+        {/* action buttons */}
+        <div className="mt-4 flex justify-end gap-2">
           {isEditing ? (
             <>
-              <button 
-                onClick={handleSubmit} 
+              <button
+                onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="edit-button submit-button"
+                className="rounded bg-blue-400 px-3 py-1 text-sm hover:bg-blue-500 disabled:opacity-60"
               >
-                {isSubmitting ? 'Saving...' : 'Save'}
+                {isSubmitting ? 'Saving…' : 'Save'}
               </button>
-              <button 
+              <button
                 onClick={handleCancel}
-                className="edit-button cancel-button-config"
+                className="rounded bg-gray-600 px-3 py-1 text-sm hover:bg-gray-500"
               >
                 Cancel
               </button>
             </>
           ) : (
-            <button 
+            <button
               onClick={() => setIsEditing(true)}
-              className="edit-button"
+              className="rounded bg-gray-700 px-3 py-1 text-sm hover:bg-gray-600"
             >
               Edit
             </button>
           )}
         </div>
-        
-        {/* Show success/error messages at the bottom of the modal */}
-        {success && <div className="success-message">Changes saved successfully!</div>}
-        {error && <div className="error-message">{error}</div>}
+
+        {/* messages */}
+        {success && (
+          <div className="mt-3 rounded bg-green-800/20 p-2 text-green-400">
+            Changes saved successfully!
+          </div>
+        )}
+        {error && (
+          <div className="mt-3 rounded bg-red-800/20 p-2 text-red-300">
+            {error}
+          </div>
+        )}
       </div>
     </div>
   );

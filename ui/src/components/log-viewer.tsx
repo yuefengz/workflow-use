@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LogViewerProps } from '../types/log-viewer.types';
-import '../styles/log-viewer.css';
 
 const LogViewer: React.FC<LogViewerProps> = ({ 
   taskId, 
   initialPosition, 
   onStatusChange, 
-  onComplete, 
   onError,
   onCancel,
   onClose
@@ -56,9 +54,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
           setStatus(data.status);
           onStatusChange?.(data.status);
           
-          if (data.status === 'completed' && data.result) {
-            onComplete?.(data.result);
-          } else if (data.status === 'failed' && data.error) {
+          if (data.status === 'failed' && data.error) {
             setError(data.error);
             onError?.(data.error);
           }
@@ -81,7 +77,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
         clearInterval(pollingIntervalRef.current);
       }
     };
-  }, [taskId, position, status, polling, onStatusChange, onComplete, onError]);
+  }, [taskId, position, status, polling, onStatusChange, onError]);
   
   const cancelWorkflow = async () => {
     if (!taskId || isCancelling || status !== 'running') return;
@@ -152,19 +148,19 @@ const LogViewer: React.FC<LogViewerProps> = ({
   };
   
   return (
-    <div className="log-viewer">
-      <div className="log-header">
-        <div className="log-title">Workflow Execution Logs</div>
-        <div className="log-header-actions">
-          <div className="log-header-buttons">
+    <div className="w-full h-[350px] flex flex-col border border-[#ddd] rounded-md overflow-hidden my-4 bg-[#f8f9fa] font-mono">
+      <div className="flex justify-between p-2 bg-[#f0f2f5] border-b border-[#ddd]">
+        <div className="font-semibold text-[#333]">Workflow Execution Logs</div>
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             {status === 'running' && (
               <button 
-                className="cancel-workflow-button" 
+                className={`flex items-center gap-1 py-1 px-2 bg-[#fff2f0] border border-[#ffccc7] rounded text-xs cursor-pointer text-[#ff4d4f] transition-all hover:bg-[#fff1f0] hover:border-[#ffa39e] ${isCancelling ? 'opacity-60 cursor-not-allowed' : ''}`}
                 onClick={cancelWorkflow}
                 disabled={isCancelling}
                 title="Cancel workflow execution"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
                   <circle cx="12" cy="12" r="10" />
                   <line x1="15" y1="9" x2="9" y2="15" />
                   <line x1="9" y1="9" x2="15" y2="15" />
@@ -174,11 +170,11 @@ const LogViewer: React.FC<LogViewerProps> = ({
             )}
             {logs.length > 0 && (
               <button 
-                className="download-logs-button" 
+                className="flex items-center gap-1 py-1 px-2 bg-[#f5f5f5] border border-[#ddd] rounded text-xs cursor-pointer text-[#333] transition-all hover:bg-[#e6e6e6] hover:border-[#ccc]"
                 onClick={downloadLogs}
                 title="Download logs as text file"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
@@ -187,30 +183,37 @@ const LogViewer: React.FC<LogViewerProps> = ({
               </button>
             )}
           </div>
-          <div className={`log-status log-status-${status}`}>
+          <div className={`py-0.5 px-2 rounded text-xs font-medium ${
+            status === 'running' ? 'bg-[#e6f7ff] text-[#1890ff] border border-[#91d5ff]' : 
+            status === 'completed' ? 'bg-[#f6ffed] text-[#52c41a] border border-[#b7eb8f]' : 
+            status === 'cancelling' ? 'bg-[#fff2f0] text-orange border border-[#ffccc7]' : 
+            status === 'cancelled' ? 'bg-[#fff2f0] text-[#ff4d4f] border border-[#ffccc7]' : 
+            status === 'failed' ? 'bg-[#fff2f0] text-[#ff4d4f] border border-[#ffccc7]' : 
+            'bg-[#fafafa] text-[#888] border border-[#ddd]'
+          }`}>
             Status: {status.charAt(0).toUpperCase() + status.slice(1)}
           </div>
         </div>
       </div>
       
-      <div className="log-container" ref={logContainerRef}>
+      <div className="flex-1 overflow-y-auto p-3 text-xs leading-normal whitespace-pre-wrap break-words bg-white text-[#333]" ref={logContainerRef}>
         {logs.length > 0 ? (
           logs.map((log, index) => formatLog(log, index))
         ) : (
-          <div className="log-empty">Waiting for logs...</div>
+          <div className="text-[#999] italic py-5 text-center">Waiting for logs...</div>
         )}
         
         {error && (
-          <div className="log-error">
+          <div className="mt-2 p-2 rounded bg-[#fff2f0] text-[#ff4d4f] border border-[#ffccc7]">
             <strong>Error:</strong> {error}
           </div>
         )}
       </div>
       
       {/* Close button at the bottom */}
-      <div className="log-footer">
+      <div className="p-2.5 flex justify-center border-t border-[#ddd] bg-[#f0f2f5]">
         <button 
-          className="close-logs-button" 
+          className="py-1.5 px-4 bg-[#f5f5f5] border border-[#ddd] rounded text-sm font-medium cursor-pointer text-[#333] transition-all hover:bg-[#e6e6e6] hover:border-[#ccc]"
           onClick={onClose}
           title="Close log viewer"
         >

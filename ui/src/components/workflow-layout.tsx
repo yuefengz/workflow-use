@@ -19,8 +19,6 @@ import { NodeConfigMenu } from './node-config-menu';
 import { PlayButton } from './play-button';
 import NoWorkflowsMessage from './no-workflow-message';
 
-import '../styles/workflow-layout.css';
-
 const WorkflowLayout: React.FC = () => {
   const [workflows, setWorkflows] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -232,57 +230,36 @@ const WorkflowLayout: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh', 
-        background: '#2a2a2a',
-        color: '#fff'
-      }}>
-        <img 
-          src="/browseruse.png" 
-          alt="Loading..." 
-          style={{ 
-            width: 120,
-            height: 'auto',
-            animation: 'spin 2s linear infinite',
-            marginBottom: 20
-          }} 
+      <div className="flex h-screen flex-col items-center justify-center bg-[#2a2a2a] text-white">
+        <img
+          src="/browseruse.png"
+          alt="Loading..."
+          className="mb-5 h-auto w-30 animate-spin"
         />
-        <div style={{ fontSize: 18 }}>Loading workflows...</div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+        <div className="text-lg">Loading workflows...</div>
       </div>
     );
   }
-  
-  // Show a message if no workflows are available
-  if (workflows.length === 0) {
-    return <NoWorkflowsMessage />;
-  }
-  
+
+  if (!workflows.length) return <NoWorkflowsMessage />;
+
   return (
-    <div style={{ display: 'flex', height: '100vh', fontFamily: 'Inter, sans-serif' }}>
-      <Sidebar 
-        workflows={workflows} 
-        onSelect={setSelected} 
-        selected={selected} 
+    <div className="flex h-screen font-sans">
+      <Sidebar
+        workflows={workflows}
+        onSelect={setSelected}
+        selected={selected}
         workflowMetadata={workflowMetadata}
         onUpdateMetadata={updateWorkflowMetadata}
         allWorkflowsMetadata={allWorkflowsMetadata}
       />
-      <div style={{ flex: 1, background: '#fafbfc', position: 'relative' }}>
-        {nodes.length > 0 ? (
+
+      <div className="relative flex-1">
+        {nodes.length ? (
           <>
-            <ReactFlow 
-              nodes={nodes} 
-              edges={edges} 
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
               colorMode="dark"
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
@@ -295,31 +272,52 @@ const WorkflowLayout: React.FC = () => {
               <MiniMap />
               <Controls />
             </ReactFlow>
-            <div className="workflow-actions">
-              <PlayButton workflowName={selected} workflowMetadata={workflowMetadata} />
-              <button 
-                className="refresh-button"
-                onClick={() => {
-                  // First clear the metadata cache
-                  setAllWorkflowsMetadata({});
-                  // Then fetch the updated workflow data
-                  fetchWorkflows();
-                  if (selected) {
-                    fetchWorkflow(selected);
-                  }
-                }}
+
+            {/* actions */}
+            <div className="absolute right-5 top-5 z-10 flex gap-2">
+              <PlayButton
+                workflowName={selected}
+                workflowMetadata={workflowMetadata}
+              />
+
+              <button
                 title="Refresh workflow"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2a2a2a] text-white shadow transition-transform duration-200 ease-in-out hover:scale-105 hover:bg-blue-500"
+                onClick={() => {
+                  setAllWorkflowsMetadata({});
+                  fetchWorkflows();
+                  if (selected) fetchWorkflow(selected);
+                }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
+                {/* hero‑icons refresh */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3" />
                 </svg>
               </button>
             </div>
           </>
         ) : (
-          <div style={{ margin: 32, color: '#888' }}>Select a workflow to visualize</div>
+          <div className="m-8 text-gray-500">
+            Select a workflow to visualize
+          </div>
         )}
-        {selectedNode && <NodeConfigMenu node={selectedNode} onClose={closeNodeMenu} workflowFilename={selected} />}
+
+        {selectedNode && (
+          <NodeConfigMenu
+            node={selectedNode}
+            onClose={closeNodeMenu}
+            workflowFilename={selected}
+          />
+        )}
       </div>
     </div>
   );

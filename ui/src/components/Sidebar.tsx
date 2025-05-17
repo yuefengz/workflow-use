@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { WorkflowMetadata } from '../types/workflow-layout.types';
 import { SidebarProps } from '../types/sidebar.types';
-import '../styles/sidebar.css';
 
 export function Sidebar({ workflows, onSelect, selected, workflowMetadata, onUpdateMetadata, allWorkflowsMetadata = {} }: SidebarProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -52,46 +51,46 @@ export function Sidebar({ workflows, onSelect, selected, workflowMetadata, onUpd
     if (isEditing) {
       return (
         <div>
-          <div className="metadata-input-container">
-            <label className="metadata-label">Name</label>
+          <div className="mb-2">
+            <label className="block text-xs text-[#aaa] mb-1">Name</label>
             <input 
               type="text" 
               value={editedMetadata?.name || ''}
               onChange={(e) => handleInputChange('name', e.target.value)}
-              className="metadata-input"
+              className="w-full bg-[#333] border border-[#555] text-white p-1.5 rounded box-border text-xs"
             />
           </div>
           
-          <div className="metadata-input-container">
-            <label className="metadata-label">Version</label>
+          <div className="mb-2">
+            <label className="block text-xs text-[#aaa] mb-1">Version</label>
             <input 
               type="text" 
               value={editedMetadata?.version || ''}
               onChange={(e) => handleInputChange('version', e.target.value)}
-              className="metadata-input"
+              className="w-full bg-[#333] border border-[#555] text-white p-1.5 rounded box-border text-xs"
             />
           </div>
           
-          <div className="metadata-input-container">
-            <label className="metadata-label">Description</label>
+          <div className="mb-2">
+            <label className="block text-xs text-[#aaa] mb-1">Description</label>
             <textarea 
               value={editedMetadata?.description || ''}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              className="metadata-textarea"
+              className="w-full bg-[#333] border border-[#555] text-white p-1.5 rounded min-h-[60px] resize-y box-border text-xs"
             />
           </div>
           
-          <div className="button-container">
+          <div className="flex gap-2 justify-end">
             <button 
               onClick={handleCancel}
-              className="cancel-button"
+              className="bg-[#444] border-none text-white py-1.5 px-3 rounded cursor-pointer text-xs"
             >
               Cancel
             </button>
             <button 
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className={`save-button ${isSubmitting ? 'save-button--submitting' : ''}`}
+              className={`bg-blue-400 hover:bg-blue-500 border-none text-xs text-white py-1.5 px-3 rounded cursor-pointer ${isSubmitting ? 'opacity-70' : ''}`}
             >
               {isSubmitting ? 'Saving...' : 'Save'}
             </button>
@@ -102,20 +101,20 @@ export function Sidebar({ workflows, onSelect, selected, workflowMetadata, onUpd
     
     return (
       <div>
-        <div className="workflow-metadata-section">
-          <div className="metadata-label">Description</div>
-          <div className="metadata-description">{workflowMetadata.description}</div>
+        <div className="mb-2">
+          <div className="text-xs text-[#aaa] mb-1">Description</div>
+          <div className="text-xs">{workflowMetadata.description}</div>
         </div>
         
         {workflowMetadata.input_schema && workflowMetadata.input_schema.length > 0 && (
           <div>
-            <div className="metadata-label">Input Parameters</div>
-            <ul className="parameter-list">
+            <div className="text-xs text-[#aaa] mb-1">Input Parameters</div>
+            <ul className="m-0 p-0 pl-4 text-xs">
               {workflowMetadata.input_schema.map((input, index) => (
-                <li key={index} className="parameter-item">
-                  <span className="parameter-name">{input.name}</span>
-                  <span className="parameter-type"> ({input.type})</span>
-                  {input.required && <span className="parameter-required"> *required</span>}
+                <li key={index} className="mb-1">
+                  <span className="text-[#7ac5ff]">{input.name}</span>
+                  <span className="text-[#aaa] text-xs"> ({input.type})</span>
+                  {input.required && <span className="text-[#ff7a7a] text-xs"> *</span>}
                 </li>
               ))}
             </ul>
@@ -129,9 +128,9 @@ export function Sidebar({ workflows, onSelect, selected, workflowMetadata, onUpd
     if (selected === workflowId && workflowMetadata) {
       return (
         <>
-          {workflowMetadata.name}
+          <span className="text-md">{workflowMetadata.name}</span>
           {workflowMetadata.version && 
-            <span className="version-label">v{workflowMetadata.version}</span>
+            <span className="text-xs text-[#888] ml-1.5">v{workflowMetadata.version}</span>
           }
         </>
       );
@@ -140,9 +139,9 @@ export function Sidebar({ workflows, onSelect, selected, workflowMetadata, onUpd
     if (allWorkflowsMetadata && allWorkflowsMetadata[workflowId]) {
       return (
         <>
-          {allWorkflowsMetadata[workflowId].name}
+          <span className="text-md">{allWorkflowsMetadata[workflowId].name}</span>
           {allWorkflowsMetadata[workflowId].version && 
-            <span className="version-label">v{allWorkflowsMetadata[workflowId].version}</span>
+            <span className="text-xs text-[#888] ml-1.5">v{allWorkflowsMetadata[workflowId].version}</span>
           }
         </>
       );
@@ -150,29 +149,29 @@ export function Sidebar({ workflows, onSelect, selected, workflowMetadata, onUpd
     
     // If no metadata is available yet, show a placeholder with loading indicator
     return (
-      <span className="workflow-name">
-        <span style={{ opacity: 0.7 }}>Loading workflow...</span>
-        <span style={{ display: 'none' }}>{workflowId}</span>
+      <span className="text-[#ccc]">
+        <span className="opacity-70">Loading workflow...</span>
+        <span className="hidden">{workflowId}</span>
       </span>
     );
   };
   
   return (
-    <div className="sidebar">
-      <div className="sidebar-logo-container">
+    <div className="w-[250px] border-r border-[#444] p-3 bg-[#2a2a2a] text-white flex flex-col overflow-auto box-border">
+      <div className="flex justify-center mb-4 items-center">
         <img 
           src="/browseruse.png" 
           alt="Browser Use Logo" 
-          className="sidebar-logo"
+          className="max-w-[80%] h-auto max-h-[60px]"
         />
       </div>
-      <h3 className="sidebar-title">Workflows</h3>
-      <ul className="sidebar-list">
+      <h3 className="mt-0 text-lg text-[#ddd]">Workflows</h3>
+      <ul className="list-none p-0 m-0">
         {workflows.map((wf) => (
           <React.Fragment key={wf}>
             <li>
               <button
-                className={`workflow-button ${wf === selected ? 'workflow-button--active' : ''}`}
+                className={`bg-transparent border-none w-full text-left py-1.5 px-0 cursor-pointer ${wf === selected ? 'font-semibold text-[#7ac5ff]' : 'text-[#ccc]'}`}
                 onClick={() => onSelect(wf)}
               >
                 {getWorkflowDisplayName(wf)}
@@ -180,13 +179,13 @@ export function Sidebar({ workflows, onSelect, selected, workflowMetadata, onUpd
             </li>
 
             {workflowMetadata && selected === wf && (
-              <li className="workflow-details-container">
-                <div className="workflow-details-header">
-                  <h4 className="sidebar-details-title">Details</h4>
+              <li className="py-2 pl-4 pr-0 border-l border-[#444] my-1 ml-1">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="m-0 text-sm text-[#ddd]">Details</h4>
                   {!isEditing && (
                     <button
                       onClick={handleEditClick}
-                      className="edit-button"
+                      className="bg-[#444] border-none text-white py-1 px-2 rounded cursor-pointer text-xs"
                     >
                       Edit
                     </button>

@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import LogViewer from './log-viewer';
 import { PlayButtonProps, InputField } from '../types/play-button.types';
-import '../styles/play-button.css';
 
 export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMetadata }) => {
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showLogViewer, setShowLogViewer] = useState<boolean>(false);
   const [isRunning, setIsRunning] = useState<boolean>(false);
-  const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [inputFields, setInputFields] = useState<InputField[]>([]);
   const [taskId, setTaskId] = useState<string | null>(null);
@@ -18,7 +16,6 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
     if (!workflowName) return;
     
     setShowModal(true);
-    setResult(null);
     setError(null);
 
     if (workflowMetadata && workflowMetadata.input_schema) {
@@ -49,7 +46,6 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
 
   const resetState = () => {
     setIsRunning(false);
-    setResult(null);
     setError(null);
     setInputFields([]);
     setTaskId(null);
@@ -76,7 +72,6 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
     setError(null);
     setTaskId(null);
     setLogPosition(0);
-    setResult(null);
     setWorkflowStatus('idle');
     
     try {
@@ -119,15 +114,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
   const handleCancelWorkflow = () => {
     setWorkflowStatus('cancelling');
   };
-  
-  const handleWorkflowComplete = (resultData: any) => {
-    setResult({
-      success: true,
-      steps_completed: resultData.length,
-      result: resultData
-    });
-  };
-  
+
   const handleWorkflowError = (errorMessage: string) => {
     setError(errorMessage);
   };
@@ -135,143 +122,123 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
   if (!workflowName) return null;
 
   return (
-    <div className="play-button-container">
-      <button 
-        className="play-button" 
-        onClick={openModal}
+    <div>
+      {/* play button */}
+      <button
         title="Execute workflow"
+        onClick={openModal}
+        className="z-10 flex h-9 w-9 items-center justify-center rounded-full bg-[#2a2a2a] text-white shadow transition-transform duration-200 ease-in-out hover:scale-105 hover:bg-blue-500"
       >
-        <span className="play-icon">▶</span>
+        ▶
       </button>
-      
-      {/* Parameters Input Modal */}
+
+      {/* parameter‑input modal */}
       {showModal && (
-        <div className="play-modal-overlay">
-          <div className="play-modal">
-            <div className="play-modal-header">
-              <h3>Execute Workflow: {workflowMetadata?.name || workflowName}</h3>
-              <button className="close-button" onClick={closeModal}>×</button>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50">
+          <div className="flex max-h-[80vh] w-[600px] max-w-[80vw] flex-col overflow-hidden rounded-lg bg-[#2a2a2a] text-white shadow-2xl">
+            {/* header */}
+            <div className="flex items-center justify-between border-b border-gray-700 p-4">
+              <h3 className="m-0 text-lg">
+                Execute Workflow: {workflowMetadata?.name || workflowName}
+              </h3>
+              <button
+                onClick={closeModal}
+                className="text-2xl text-gray-400 hover:text-white"
+              >
+                ×
+              </button>
             </div>
-            
-            <div className="play-modal-content">
-              {error && <div className="error-message">{error}</div>}
-              
-              {/* Input Fields Section */}
-              <>
-                {inputFields.length > 0 ? (
-                  <div className="input-fields">
-                    <h4>Input Parameters</h4>
-                    {inputFields.map((field, index) => (
-                      <div key={field.name} className="input-field">
-                        <label>
-                          {field.name}
-                          {field.required && <span className="required">*</span>}
-                          <span className="type-info">({field.type})</span>
-                        </label>
-                        {field.type === 'boolean' ? (
-                          <input
-                            type="checkbox"
-                            checked={field.value}
-                            onChange={(e) => handleInputChange(index, e.target.checked)}
-                          />
-                        ) : field.type === 'number' ? (
-                          <input
-                            type="number"
-                            value={field.value}
-                            onChange={(e) => handleInputChange(index, e.target.value)}
-                            className="input-control"
-                          />
-                        ) : (
-                          <input
-                            type="text"
-                            value={field.value}
-                            onChange={(e) => handleInputChange(index, e.target.value)}
-                            className="input-control"
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p>No input parameters required for this workflow.</p>
-                )}
-                
-                <div className="modal-actions">
-                  <button 
-                    className="cancel-button" 
-                    onClick={closeModal}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    className="execute-button" 
-                    onClick={executeWorkflow}
-                    disabled={isRunning}
-                  >
-                    Execute Workflow
-                  </button>
+
+            {/* content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {error && (
+                <div className="mb-4 rounded bg-red-800/20 p-2 text-red-300">
+                  {error}
                 </div>
-              </>
+              )}
+
+              {inputFields.length ? (
+                <div className="mb-5">
+                  <h4 className="mb-3 mt-0 text-base text-gray-300">
+                    Input Parameters
+                  </h4>
+
+                  {inputFields.map((f, i) => (
+                    <div key={f.name} className="mb-3">
+                      <label className="mb-1 block text-sm text-gray-300">
+                        {f.name}
+                        {f.required && (
+                          <span className="ml-1 text-red-400">*</span>
+                        )}
+                        <span className="ml-1 text-xs text-gray-500">
+                          ({f.type})
+                        </span>
+                      </label>
+
+                      {f.type === 'boolean' ? (
+                        <input
+                          type="checkbox"
+                          checked={f.value as boolean}
+                          onChange={e => handleInputChange(i, e.target.checked)}
+                        />
+                      ) : (
+                        <input
+                          type={f.type === 'number' ? 'number' : 'text'}
+                          value={f.value as string | number}
+                          onChange={e => handleInputChange(i, e.target.value)}
+                          className="w-full rounded border border-gray-600 bg-[#333] px-3 py-2 text-sm text-white"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p>No input parameters required for this workflow.</p>
+              )}
+
+              <div className="mt-5 flex justify-end gap-3">
+                <button
+                  onClick={closeModal}
+                  className="rounded bg-gray-600 px-4 py-2 text-sm text-white hover:bg-gray-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={executeWorkflow}
+                  disabled={isRunning}
+                  className="rounded bg-blue-400 px-4 py-2 text-sm text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-gray-600 disabled:opacity-70"
+                >
+                  Execute Workflow
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
-      
-      {/* Separate Log Viewer */}
+
+      {/* log viewer */}
       {showLogViewer && taskId && (
-        <div className="log-viewer-overlay">
-          <div className="log-viewer-modal">
-            <div className="log-viewer-header">
-              <div>Workflow Execution {workflowStatus !== 'running' ? `(${workflowStatus.charAt(0).toUpperCase() + workflowStatus.slice(1)})` : ''}</div>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50">
+          <div className="flex max-h-[80vh] w-[650px] max-w-[80vw] flex-col overflow-hidden rounded-lg bg-[#2a2a2a] text-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-700 p-4">
+              <div>
+                Workflow Execution
+                {workflowStatus !== 'running' &&
+                  ` (${workflowStatus.charAt(0).toUpperCase()}${workflowStatus.slice(
+                    1,
+                  )})`}
+              </div>
             </div>
-            
-            <div className="log-viewer-content">
-              <LogViewer 
+
+            <div className="flex-1 overflow-y-auto p-4">
+              <LogViewer
                 taskId={taskId} 
                 initialPosition={logPosition}
                 onStatusChange={handleStatusChange}
-                onComplete={handleWorkflowComplete}
                 onError={handleWorkflowError}
                 onCancel={handleCancelWorkflow}
                 onClose={closeLogViewer}
               />
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Results Modal (only shown if we want a separate results view) */}
-      {false && result && (
-        <div className="play-modal-overlay">
-          <div className="play-modal">
-            <div className="play-modal-header">
-              <h3>Execution Results</h3>
-              <button className="close-button" onClick={closeModal}>×</button>
-            </div>
-            
-            <div className="play-modal-content">
-              <div className="result-container">
-                <div className="result-header">
-                  <h4>Execution Complete</h4>
-                  <div className="steps-completed">
-                    Steps completed: <strong>{result.steps_completed}</strong>
-                  </div>
-                </div>
-                
-                <div className="result-output">
-                  <h5>Output:</h5>
-                  <pre>{JSON.stringify(result.output, null, 2)}</pre>
-                </div>
-                
-                <div className="modal-actions">
-                  <button 
-                    className="close-button" 
-                    onClick={closeModal}
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
         </div>
