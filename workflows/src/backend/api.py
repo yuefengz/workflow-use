@@ -130,9 +130,9 @@ class WorkflowService:
     # --------------------------------------------------------------------- #
     def _list_workflows(self) -> List[str]:
         return [
-            f.stem
+            f.name
             for f in self.tmp_dir.iterdir()
-            if f.is_file() and f.suffix != ".json"
+            if f.is_file() and not f.name.startswith("temp_recording")
         ]
 
     def _get_workflow(self, name: str) -> str:
