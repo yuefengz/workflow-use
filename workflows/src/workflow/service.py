@@ -20,7 +20,13 @@ from pydantic import BaseModel, create_model
 from src.controller.service import WorkflowController
 from src.schema.views import (
     AgenticWorkflowStep,
+    ClickStep,
     DeterministicWorkflowStep,
+    InputStep,
+    KeyPressStep,
+    NavigationStep,
+    ScrollStep,
+    SelectChangeStep,
     WorkflowDefinitionSchema,
     WorkflowInputSchemaDefinition,
     WorkflowStep,
@@ -128,29 +134,38 @@ class Workflow:
         # Extract details from the failed step dictionary
         failed_action_name = step_resolved.type
         failed_params = step_resolved.model_dump()
-        step_description = step_resolved.description
+        step_description = step_resolved.description or "No description provided"
         error_msg = str(error) if error else "Unknown error"
         total_steps = len(self.steps)
         fail_details = (
-            f"step={step_index + 1}/{total_steps}, action='{failed_action_name}', description='{step_description}', "
-            f"params={str(failed_params)}, error='{error_msg}'"
+            f"step={step_index + 1}/{total_steps}, action='{failed_action_name}', "
+            f"description='{step_description}', params={str(failed_params)}, error='{error_msg}'"
         )
-        # Determine the failed_value based on available step attributes
+        
+        # Determine the failed_value based on step type and attributes
         failed_value = None
-        if hasattr(step_resolved, 'elementText'):
-            failed_value = getattr(step_resolved, 'elementText')
-        elif hasattr(step_resolved, 'url'):
-            failed_value = getattr(step_resolved, 'url')
-        elif hasattr(step_resolved, 'value'):
-            failed_value = getattr(step_resolved, 'value')
+        description_prefix = f"Purpose: {step_description}. " if step_description else ""
+        
+        if isinstance(step_resolved, NavigationStep):
+            failed_value = f"{description_prefix}Navigate to URL: {step_resolved.url}"
+        elif isinstance(step_resolved, ClickStep):
+            # element_info = step_resolved.elementText or step_resolved.cssSelector
+            # failed_value = f"{description_prefix}Click element: {element_info}"
+            failed_value = f"Find and click element with description: {step_resolved.description}"
+        elif isinstance(step_resolved, InputStep):
+            failed_value = f"{description_prefix}Input text: '{step_resolved.value}' into element."
+        elif isinstance(step_resolved, SelectChangeStep):
+            failed_value = f"{description_prefix}Select option: '{step_resolved.selectedText}' in dropdown."
+        elif isinstance(step_resolved, KeyPressStep):
+            failed_value = f"{description_prefix}Press key: '{step_resolved.key}'"
+        elif isinstance(step_resolved, ScrollStep):
+            failed_value = f"{description_prefix}Scroll to position: (x={step_resolved.scrollX}, y={step_resolved.scrollY})"
         else:
-            # Add any other logic to determine failed_value from step details
-            failed_value = 'No specific failed value available'
-
+            failed_value = f"{description_prefix}No specific target value available for action '{failed_action_name}'"
+        
         # Build workflow overview using the stored dictionaries
         workflow_overview_lines: list[str] = []
         for idx, step in enumerate(self.steps):
-            # Use description, fallback to task/action/type
             desc = step.description or ""
             step_type_info = step.type
             details = step.model_dump()
@@ -165,8 +180,10 @@ class Workflow:
             step_index=step_index + 1,
             total_steps=len(self.steps),
             workflow_details=workflow_overview,
+            action_type=failed_action_name,
             fail_details=fail_details,
-            failed_value=failed_value
+            failed_value=failed_value,
+            step_description=step_description
         )
         logger.info(f"Agent fallback task: {fallback_task}")
 
