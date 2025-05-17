@@ -1,7 +1,7 @@
 # Example for your new main runner (e.g., in recorder.py or a new script)
 import asyncio
 
-from src.recorder.service import RecordingService  # Adjust import path if necessary
+from workflow_use.recorder.service import RecordingService  # Adjust import path if necessary
 
 
 async def run_recording():

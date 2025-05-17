@@ -4,11 +4,11 @@ import pathlib
 from typing import Optional
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from playwright.async_api import BrowserContext, async_playwright
 
 # Assuming views.py is correctly located for this import path
-from src.recorder.views import (
+from workflow_use.recorder.views import (
     HttpRecordingStoppedEvent,
     HttpWorkflowUpdateEvent,
     RecorderEvent,
@@ -36,6 +36,20 @@ class RecordingService:
         self.app.add_api_route(
             "/event", self._handle_event_post, methods=["POST"], status_code=202
         )
+        # -- DEBUGGING --
+        # Turn this on to debug requests
+        # @self.app.middleware("http")
+        # async def log_requests(request: Request, call_next):
+        #     print(f"[Debug] Incoming request: {request.method} {request.url}")
+        #     try:
+        #         # Read request body
+        #         body = await request.body()
+        #         print(f"[Debug] Request body: {body.decode('utf-8', errors='replace')}")
+        #         response = await call_next(request)
+        #         print(f"[Debug] Response status: {response.status_code}")
+        #         return response
+        #     except Exception as e:
+        #         print(f"[Error] Error processing request: {str(e)}")
 
         self.uvicorn_server_instance: Optional[uvicorn.Server] = None
         self.server_task: Optional[asyncio.Task] = None

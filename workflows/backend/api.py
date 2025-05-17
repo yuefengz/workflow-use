@@ -9,7 +9,10 @@ import uvicorn
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_openai import ChatOpenAI
-from src.workflow.service import WorkflowExecutor
+
+from browser_use.browser.browser import Browser
+from workflow_use.controller.service import WorkflowController
+from workflow_use.workflow.service import Workflow
 
 class WorkflowService:
     """Workflow execution service."""
@@ -27,8 +30,10 @@ class WorkflowService:
         except Exception as exc:
             print(f"Error initializing LLM: {exc}. Ensure OPENAI_API_KEY is set.")
             self.llm_instance = None
-        self.workflow_executor = WorkflowExecutor(self.llm_instance)
 
+        self.browser_instance = Browser()
+        self.controller_instance = WorkflowController()
+        
         # In‑memory task tracking
         self.active_tasks: Dict[str, Dict[str, Any]] = {}
         self.workflow_tasks: Dict[str, asyncio.Task] = {}
@@ -200,7 +205,16 @@ class WorkflowService:
                 return
 
             workflow_path = self.tmp_dir / workflow_name
-            workflow_def = self.workflow_executor.load_workflow_from_path(workflow_path)
+            try:
+                self.workflow_obj = Workflow.load_from_file(
+                    str(workflow_path), 
+                    llm=self.llm_instance,
+                    browser=self.browser_instance,
+                    controller=self.controller_instance
+                )
+            except Exception as e:
+                print(f'Error loading workflow: {e}')
+                return
 
             with open(log_file, "a") as f:
                 f.write(f"[{ts}] Executing workflow...\n")
@@ -211,8 +225,8 @@ class WorkflowService:
                 self.active_tasks[task_id]["status"] = "cancelled"
                 return
 
-            result = await self.workflow_executor.run_workflow(
-                workflow_def, inputs, close_browser_at_end=True, cancel_event=cancel_event
+            result = await self.workflow_obj.run(
+                inputs, close_browser_at_end=True, cancel_event=cancel_event
             )
 
             if cancel_event.is_set():
@@ -265,15 +279,6 @@ class WorkflowService:
             raise HTTPException(status_code=404, detail=f"Workflow {workflow_name} not found")
 
         try:
-            workflow_def = self.workflow_executor.load_workflow_from_path(workflow_path)
-            missing = [
-                inp.name
-                for inp in workflow_def.inputs_def
-                if inp.required and inp.name not in inputs
-            ]
-            if missing:
-                raise HTTPException(status_code=400, detail=f"Missing required inputs: {', '.join(missing)}")
-
             task_id = str(uuid.uuid4())
             cancel_event = asyncio.Event()
             self.cancel_events[task_id] = cancel_event
@@ -299,6 +304,7 @@ class WorkflowService:
         except HTTPException:
             raise
         except Exception as exc:
+            print(f"Error starting workflow: {exc}")
             raise HTTPException(status_code=500, detail=f"Error starting workflow: {exc}") from exc
 
     async def _get_logs(self, task_id: str, position: int = 0) -> Dict[str, Any]:

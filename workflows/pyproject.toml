@@ -1,6 +1,6 @@
 [project]
 name = "workflow-use"
-version = "0.0.1"
+version = "0.0.2"
 authors = [{ name = "Gregor Zunic" }]
 description = "Create, edit, run deterministic workflows"
 readme = "README.md"
@@ -52,5 +52,5 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build]
 include = [
-    "src/**/*.py"
+    "workflow_use/**/*.py"
 ]
