@@ -401,7 +401,7 @@ class Workflow:
 				results.append(result)
 				# Persist outputs using the resolved step dictionary
 				self._store_output(step_resolved, result)
-				logger.info(f'--- Finished Step {step_index + 1} ---')
+				logger.info(f'--- Finished Step {step_index + 1} ---\n')
 		finally:
 			if close_browser_at_end:
 				# Ensure __aexit__ is called with appropriate args for exception handling if needed
