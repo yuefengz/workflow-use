@@ -17,6 +17,7 @@ import { type WorkflowMetadata } from '../types/Workflow.types';
 import { Sidebar } from './Sidebar';
 import { NodeConfigMenu } from './NodeConfigMenu';
 import { PlayButton } from './PlayButton';
+import NoWorkflowsMessage from './NoWorkflowsMessage';
 
 import '../styles/WorkflowLayout.css';
 
@@ -93,6 +94,7 @@ const WorkflowLayout: React.FC = () => {
           }
         } catch (error) {
           console.error(`Error fetching metadata for ${workflowName}:`, error);
+          return null;
         }
       });
     } catch (error) {
@@ -258,6 +260,11 @@ const WorkflowLayout: React.FC = () => {
         `}</style>
       </div>
     );
+  }
+  
+  // Show a message if no workflows are available
+  if (workflows.length === 0) {
+    return <NoWorkflowsMessage />;
   }
   
   return (

@@ -148,7 +148,13 @@ export function Sidebar({ workflows, onSelect, selected, workflowMetadata, onUpd
       );
     }
     
-    return <span className="workflow-name">{workflowId}</span>;
+    // If no metadata is available yet, show a placeholder with loading indicator
+    return (
+      <span className="workflow-name">
+        <span style={{ opacity: 0.7 }}>Loading workflow...</span>
+        <span style={{ display: 'none' }}>{workflowId}</span>
+      </span>
+    );
   };
   
   return (
