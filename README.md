@@ -45,6 +45,17 @@ cp .env.example .env
 python cli.py --help
 ```
 
+# Usage of the library
+
+Running the workflow files is as simple as:
+
+```python
+from workflow_use import Workflow
+
+workflow = Workflow.load_from_file("example.workflow.json")
+result = asyncio.run(workflow.run_as_tool("I want to search for 'workflow use'"))
+```
+
 # Demos
 
 ## Workflow Use filling out form instantly
