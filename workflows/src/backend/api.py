@@ -1,24 +1,15 @@
 import asyncio
 import json
-import os
-import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import uvicorn
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_openai import ChatOpenAI
-
-sys.path.append(
-    os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    )
-)
-from src.workflow.service import WorkflowExecutor  # noqa: E402
-
+from src.workflow.service import WorkflowExecutor
 
 class WorkflowService:
     """Workflow execution service."""
