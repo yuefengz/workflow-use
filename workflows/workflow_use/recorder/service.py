@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from playwright.async_api import BrowserContext, async_playwright
 
 # Assuming views.py is correctly located for this import path
-from src.recorder.views import (
+from workflow_use.recorder.views import (
     HttpRecordingStoppedEvent,
     HttpWorkflowUpdateEvent,
     RecorderEvent,

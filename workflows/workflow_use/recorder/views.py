@@ -2,7 +2,7 @@ from typing import Literal, Union
 
 from pydantic import BaseModel
 
-from src.schema.views import WorkflowDefinitionSchema
+from workflow_use.schema.views import WorkflowDefinitionSchema
 
 # --- Event Payloads ---
 
