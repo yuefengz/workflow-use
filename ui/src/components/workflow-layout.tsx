@@ -11,15 +11,15 @@ import {
   useReactFlow,
 } from '@xyflow/react';
 import {type Node } from '@xyflow/react';
-import { NodeData } from '../types/NodeConfigMenu.types';
-import { jsonToFlow } from '../utils/jsonToFlow';
-import { type WorkflowMetadata } from '../types/Workflow.types';
-import { Sidebar } from './Sidebar';
-import { NodeConfigMenu } from './NodeConfigMenu';
-import { PlayButton } from './PlayButton';
-import NoWorkflowsMessage from './NoWorkflowsMessage';
+import { NodeData } from '../types/node-config-menu.types';
+import { jsonToFlow } from '../utils/json-to-flow';
+import { type WorkflowMetadata } from '../types/workflow-layout.types';
+import { Sidebar } from './sidebar';
+import { NodeConfigMenu } from './node-config-menu';
+import { PlayButton } from './play-button';
+import NoWorkflowsMessage from './no-workflow-message';
 
-import '../styles/WorkflowLayout.css';
+import '../styles/workflow-layout.css';
 
 const WorkflowLayout: React.FC = () => {
   const [workflows, setWorkflows] = useState<string[]>([]);

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { WorkflowMetadata } from '../types/Workflow.types';
-import { SidebarProps } from '../types/Sidebar.types';
-import '../styles/Sidebar.css';
+import { WorkflowMetadata } from '../types/workflow-layout.types';
+import { SidebarProps } from '../types/sidebar.types';
+import '../styles/sidebar.css';
 
 export function Sidebar({ workflows, onSelect, selected, workflowMetadata, onUpdateMetadata, allWorkflowsMetadata = {} }: SidebarProps) {
   const [isEditing, setIsEditing] = useState(false);

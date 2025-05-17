@@ -1,4 +1,4 @@
-import { WorkflowMetadata } from './Workflow.types';
+import { WorkflowMetadata } from './workflow-layout.types';
 
 export interface PlayButtonProps {
   workflowName: string | null;

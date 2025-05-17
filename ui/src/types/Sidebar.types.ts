@@ -1,4 +1,4 @@
-import { type WorkflowMetadata } from './Workflow.types';
+import { type WorkflowMetadata } from './workflow-layout.types';
 
 export interface SidebarProps {
   workflows: string[];

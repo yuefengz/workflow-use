@@ -1,5 +1,5 @@
 import { Edge } from '@xyflow/react';
-import { Workflow, WorkflowStep, WorkflowMetadata, AppNode } from '../types/Workflow.types';
+import { Workflow, WorkflowStep, WorkflowMetadata, AppNode } from '../types/workflow-layout.types';
 
 export function jsonToFlow(workflow: string): { 
   nodes: AppNode[]; 

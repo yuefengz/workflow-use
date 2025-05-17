@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StepData, NodeConfigMenuProps } from '../types/NodeConfigMenu.types';
-import '../styles/NodeConfigMenu.css';
+import { StepData, NodeConfigMenuProps } from '../types/node-config-menu.types';
+import '../styles/node-config-menu.css';
 
 const toTitleCase = (str: string): string => {
   return str.split('_').map(word => {

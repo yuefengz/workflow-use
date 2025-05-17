@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import LogViewer from './LogViewer';
-import { PlayButtonProps, InputField } from '../types/playButton.types';
-import '../styles/PlayButton.css';
+import LogViewer from './log-viewer';
+import { PlayButtonProps, InputField } from '../types/play-button.types';
+import '../styles/play-button.css';
 
 export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMetadata }) => {
   const [showModal, setShowModal] = useState<boolean>(false);

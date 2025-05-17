@@ -1,5 +1,5 @@
 import React from 'react';
-import '../styles/NoWorkflowsMessage.css';
+import '../styles/no-workflow-message.css';
 
 const NoWorkflowsMessage: React.FC = () => {
   return (

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogViewerProps } from '../types/LogViewer.types';
-import '../styles/LogViewer.css';
+import { LogViewerProps } from '../types/log-viewer.types';
+import '../styles/log-viewer.css';
 
 const LogViewer: React.FC<LogViewerProps> = ({ 
   taskId, 
