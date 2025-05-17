@@ -25,27 +25,39 @@ git clone https://github.com/browser-use/workflow-use
 ## Build the extension
 
 ```bash
-cd extension
-npm install
-npm run build
+cd extension && npm install && npm run build
 ```
 
 ## Setup workflow environment
 
 ```bash
-cd workflows
+cd .. && cd workflows
 uv sync
+source .venv/bin/activate # for mac / linux
 playwright install chromium
-cp .env.example .env
+cp .env.example .env # add your OPENAI_API_KEY to the .env file
 ```
 
-## Run the cli
+
+## Run example workflow
+
+```bash
+python cli.py run-as-tool examples/example.workflow.json --prompt "fill the form with example data"
+```
+
+## Record your own workflow
+
+```bash
+python cli.py record-workflow
+```
+
+## See all commands
 
 ```bash
 python cli.py --help
 ```
 
-# Usage of the library
+# Usage from python
 
 Running the workflow files is as simple as:
 
