@@ -11,6 +11,7 @@ from langchain_openai import ChatOpenAI
 
 from workflow_use.builder.service import BuilderService
 from workflow_use.controller.service import WorkflowController
+from workflow_use.mcp.service import WorkflowMCPService
 from workflow_use.recorder.service import RecordingService  # Added import
 from workflow_use.workflow.service import Workflow
 
@@ -116,9 +117,9 @@ def _build_and_save_workflow_from_recording(
 		typer.style('Enter a name for the generated workflow file', bold=True) + ' (e.g., my_search.workflow.json):',
 		default=default_workflow_filename,
 	)
-		# Ensure the file name ends with .json
+	# Ensure the file name ends with .json
 	if not workflow_output_name.endswith('.json'):
-		workflow_output_name = f"{workflow_output_name}.json"
+		workflow_output_name = f'{workflow_output_name}.json'
 	final_workflow_path = output_dir / workflow_output_name
 
 	try:
@@ -390,6 +391,31 @@ def run_workflow_command(
 	except Exception as e:
 		typer.secho(f'Error running workflow: {e}', fg=typer.colors.RED)
 		raise typer.Exit(code=1)
+
+
+@app.command(name='mcp-server', help='Starts the MCP server which expose all the created workflows as tools.')
+def mcp_server_command(
+	port: int = typer.Option(
+		8008,
+		'--port',
+		'-p',
+		help='Port to run the MCP server on.',
+	),
+):
+	"""
+	Starts the MCP server which expose all the created workflows as tools.
+	"""
+	typer.echo(typer.style('Starting MCP server...', bold=True))
+	typer.echo()  # Add space
+
+	llm_instance = ChatOpenAI(model='gpt-4o')
+	mcp = WorkflowMCPService().get_mcp_server(llm_instance)
+
+	mcp.run(
+		transport='sse',
+		host='0.0.0.0',
+		port=port,
+	)
 
 
 if __name__ == '__main__':
