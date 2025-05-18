@@ -1,12 +1,9 @@
-import asyncio
-
-from fastmcp import Client
 from langchain_openai import ChatOpenAI
 
 from workflow_use.mcp.service import WorkflowMCPService
 
-
-async def main():
+# async def main():
+if __name__ == '__main__':
 	llm_instance = ChatOpenAI(model='gpt-4o', temperature=0)
 
 	print('[FastMCP Server] Starting MCP server...')
@@ -15,29 +12,29 @@ async def main():
 	# this __main__ block might be bypassed by FastMCP's runner,
 	# but it's good practice for direct Python execution.
 	mcp = WorkflowMCPService().get_mcp_server(llm_instance)
-	# mcp.run(
-	# 	transport='streamable-http',
-	# 	host='0.0.0.0',
-	# 	port=8008,
-	# )
+	mcp.run(
+		transport='sse',
+		host='0.0.0.0',
+		port=8008,
+	)
 
-	async with Client(mcp) as client:
-		tools = await client.list_tools()
-		print(f'Available tools: {tools}')
+	# async with Client(mcp) as client:
+	# 	tools = await client.list_tools()
+	# 	print(f'Available tools: {tools}')
 
-		result = await client.call_tool(
-			'Government_Form_Submission_1.0',
-			{
-				'first_name': 'John',
-				'last_name': 'Smith',
-				'social_security_last4': '1234',
-				'gender': 'male',
-				'marital_status': 'single',
-			},
-		)
+	# 	result = await client.call_tool(
+	# 		'Government_Form_Submission_1.0',
+	# 		{
+	# 			'first_name': 'John',
+	# 			'last_name': 'Smith',
+	# 			'social_security_last4': '1234',
+	# 			'gender': 'male',
+	# 			'marital_status': 'single',
+	# 		},
+	# 	)
 
-		print(result)
+	# 	print(result)
 
 
-if __name__ == '__main__':
-	asyncio.run(main())
+# if __name__ == '__main__':
+# 	asyncio.run(main())

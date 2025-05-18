@@ -1,4 +1,5 @@
 import json as _json
+from inspect import Parameter, Signature
 from pathlib import Path
 from typing import Any
 
@@ -30,7 +31,7 @@ class WorkflowMCPService:
 	def _setup_workflow_tools(self, mcp_app: FastMCP, llm_instance: BaseChatModel):
 		"""
 		Scans a directory for workflow.json files, loads them, and registers them as tools
-		with the FastMCP instance using dynamically generated functions via exec.
+		with the FastMCP instance by dynamically setting function signatures.
 		"""
 		workflow_files = list(Path(self.workflow_dir).glob('*.workflow.json'))
 		print(f"[FastMCP Service] Found workflow files in '{self.workflow_dir}': {len(workflow_files)}")
@@ -40,83 +41,67 @@ class WorkflowMCPService:
 				print(f'[FastMCP Service] Loading workflow from: {wf_file_path}')
 				schema = WorkflowDefinitionSchema.load_from_json(str(wf_file_path))
 
+				# Instantiate the workflow
 				workflow = Workflow(workflow_schema=schema, llm=llm_instance, browser=None, controller=None)
 
-				param_def_strings = []  # e.g., ["first_name: str", "age: int = None"]
-				param_names = []  # e.g., ["first_name", "age"]
-				exec_context_types = {'Any': Any, '_json_serializer': _json, 'workflow_obj': workflow}
+				params_for_signature = []
+				annotations_for_runner = {}
 
 				if hasattr(workflow._input_model, 'model_fields'):
 					for field_name, model_field in workflow._input_model.model_fields.items():
-						param_names.append(field_name)
+						param_annotation = model_field.annotation if model_field.annotation is not None else Any
 
-						# Get type hint string (e.g., "str", "int", "Any")
-						type_hint_str = 'Any'  # Default to Any
-						if model_field.annotation is not None:
-							if hasattr(model_field.annotation, '__name__'):
-								type_hint_str = model_field.annotation.__name__
-							elif (
-								hasattr(model_field.annotation, '_name') and model_field.annotation._name
-							):  # For things like List, Dict
-								type_hint_str = str(model_field.annotation).replace('typing.', '')  # Get a string representation
-							else:
-								# Fallback for more complex types, might need specific handling
-								type_hint_str = str(model_field.annotation).replace('typing.', '')
-
-						# Add type to exec context if not already basic or Any
-						if model_field.annotation is not Any and model_field.annotation is not None:
-							exec_context_types[type_hint_str.split('[')[0]] = model_field.annotation  # Corrected string split
-
-						param_def_str = f'{field_name}: {type_hint_str}'
-
+						param_default = Parameter.empty
 						if not model_field.is_required():
-							default_val = model_field.default
-							if isinstance(default_val, str):
-								param_def_str += f" = '{default_val}'"  # escape quotes in default_val if necessary
-							else:
-								param_def_str += f' = {default_val}'
-						param_def_strings.append(param_def_str)
+							param_default = model_field.default if model_field.default is not None else None
 
-				func_signature_params_str = ', '.join(param_def_strings)
-				safe_workflow_name = ''.join(c if c.isalnum() else '_' for c in schema.name)
-				dynamic_func_name = f'tool_runner_{safe_workflow_name}_{schema.version.replace(".", "_")}'
+						params_for_signature.append(
+							Parameter(
+								name=field_name,
+								kind=Parameter.POSITIONAL_OR_KEYWORD,
+								default=param_default,
+								annotation=param_annotation,
+							)
+						)
+						annotations_for_runner[field_name] = param_annotation
 
-				inputs_dict_parts = [f"'{name}': {name}" for name in param_names]
-				inputs_dict_str = '{' + ', '.join(inputs_dict_parts) + '}'
+				dynamic_signature = Signature(params_for_signature)
 
-				func_def_str = f"""
-async def {dynamic_func_name}({func_signature_params_str}):
-    # This function is dynamically created by exec.
-    # 'workflow_obj' and '_json_serializer' are injected from the exec_context.
-    inputs_for_run = {inputs_dict_str}
-    raw_result = await workflow_obj.run(inputs=inputs_for_run)
-    try:
-        return _json_serializer.dumps(raw_result, default=str)
-    except Exception:
-        return str(raw_result)
-"""
-				# print(f"--- Generated function for {dynamic_func_name} ---")
-				# print(func_def_str)
-				# print(f"--- Exec context types: {exec_context_types.keys()} ---")
+				# Sanitize workflow name for the function name
+				safe_workflow_name_for_func = ''.join(c if c.isalnum() else '_' for c in schema.name)
+				dynamic_func_name = f'tool_runner_{safe_workflow_name_for_func}_{schema.version.replace(".", "_")}'
 
-				# Execute the function definition
-				exec(func_def_str, exec_context_types)
-				runner_func_impl = exec_context_types[dynamic_func_name]
+				# Define the actual function that will be called by FastMCP
+				# It uses a closure to capture the specific 'workflow' instance
+				def create_runner(wf_instance: Workflow):
+					async def actual_workflow_runner(**kwargs):
+						# kwargs will be populated by FastMCP based on the dynamic_signature
+						raw_result = await wf_instance.run(inputs=kwargs)
+						try:
+							return _json.dumps(raw_result, default=str)
+						except Exception:
+							return str(raw_result)
 
-				# Set the docstring for the tool
+					return actual_workflow_runner
+
+				runner_func_impl = create_runner(workflow)
+
+				# Set the dunder attributes that FastMCP will inspect
+				runner_func_impl.__name__ = dynamic_func_name
 				runner_func_impl.__doc__ = schema.description
+				runner_func_impl.__signature__ = dynamic_signature
+				runner_func_impl.__annotations__ = annotations_for_runner
 
+				# Tool name and description for FastMCP registration
 				unique_tool_name = f'{schema.name.replace(" ", "_")}_{schema.version}'
 				tool_description = schema.description
 
 				tool_decorator = mcp_app.tool(name=unique_tool_name, description=tool_description)
 				tool_decorator(runner_func_impl)
 
-				actual_params = (
-					list(runner_func_impl.__annotations__.keys()) if hasattr(runner_func_impl, '__annotations__') else 'N/A'
-				)
+				param_names_for_log = list(dynamic_signature.parameters.keys())
 				print(
-					f"[FastMCP Service] Registered tool (via exec): '{unique_tool_name}' for '{schema.name}'. Params: {actual_params}"
+					f"[FastMCP Service] Registered tool (via signature): '{unique_tool_name}' for '{schema.name}'. Params: {param_names_for_log}"
 				)
 
 			except Exception as e:
