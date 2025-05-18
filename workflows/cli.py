@@ -24,13 +24,16 @@ app = typer.Typer(
 	no_args_is_help=True,
 )
 
-# Instantiate services (assuming OPENAI_API_KEY is set in environment)
+# Default LLM instance to None
+llm_instance = None
 try:
 	llm_instance = ChatOpenAI(model='gpt-4o')
 except Exception as e:
-	typer.secho(f'Error initializing LLM: {e}. Ensure OPENAI_API_KEY is set.', fg=typer.colors.RED)
-	# Potentially exit or provide a way to configure API key
-	llm_instance = None
+	typer.secho(f'Error initializing LLM: {e}. Would you like to set your OPENAI_API_KEY?', fg=typer.colors.RED)
+	set_openai_api_key = input('Set OPENAI_API_KEY? (y/n): ')
+	if set_openai_api_key.lower() == 'y':
+		os.environ['OPENAI_API_KEY'] = input('Enter your OPENAI_API_KEY: ')
+		llm_instance = ChatOpenAI(model='gpt-4o')
 
 builder_service = BuilderService(llm=llm_instance) if llm_instance else None
 # recorder_service = RecorderService() # Placeholder
