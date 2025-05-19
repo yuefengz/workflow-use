@@ -238,16 +238,15 @@ class WorkflowService:
             formatted_result = [
                 {
                     "step_id": i,
-                    "description": s.get("description", f"Step {i}"),
+                    "extracted_content": s.extracted_content,
                     "status": "completed",
-                    "timestamp": s.get("timestamp", 0),
                 }
                 for i, s in enumerate(result)
             ]
             for step in formatted_result:
                 with open(log_file, "a") as f:
                     f.write(
-                        f"[{ts}] Completed step {step['step_id']}: {step['description']}\n"
+                        f"[{ts}] Completed step {step['step_id']}: {step['extracted_content']}\n"
                     )
 
             self.active_tasks[task_id].update(
