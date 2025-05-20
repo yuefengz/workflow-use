@@ -341,13 +341,29 @@ class Workflow:
 					raise ValueError('Cannot fall back to agent: LLM instance required.')
 				if self.fallback_to_agent:
 					result = await self._fallback_to_agent(step_resolved, step_index, e)
+					if not result.is_successful():
+						raise ValueError(f'Deterministic step {step_index + 1} ({action_name}) failed even after fallback')
 				else:
 					raise ValueError(f'Deterministic step {step_index + 1} ({action_name}) failed: {e}')
 		elif isinstance(step_resolved, AgenticWorkflowStep):
 			# Use task key from step dictionary
 			task_description = step_resolved.task
 			logger.info(f'Running agent task: {task_description}')
-			result = await self._run_agent_step(step_resolved)
+			try:
+				result = await self._run_agent_step(step_resolved)
+				if not result.is_successful():
+					logger.warning(f'Agent step {step_index + 1} failed evaluation.')
+					raise ValueError(f'Agent step {step_index + 1} failed evaluation.')
+			except Exception as e:
+				if self.fallback_to_agent:
+					logger.warning(f'Agent step {step_index + 1} failed: {e}. Attempting fallback with agent.')
+					if self.llm is None:
+						raise ValueError('Cannot fall back to agent: LLM instance required.')
+					result = await self._fallback_to_agent(step_resolved, step_index, e)
+					if not result.is_successful():
+						raise ValueError(f'Agent step {step_index + 1} failed even after fallback')
+				else:
+					raise ValueError(f'Agent step {step_index + 1} failed: {e}')
 
 		return result
 
@@ -407,6 +423,7 @@ class Workflow:
 		try:
 			for step_index, step_dict in enumerate(self.steps):  # self.steps now holds dictionaries
 				await asyncio.sleep(0.1)
+				await self.browser_context._wait_for_stable_network()
 
 				# Use description from the step dictionary
 				step_description = step_dict.description or 'No description provided'
