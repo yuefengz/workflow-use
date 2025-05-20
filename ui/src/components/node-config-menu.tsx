@@ -1,22 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { StepData, NodeConfigMenuProps } from '../types/node-config-menu.types';
+import React, { useState, useEffect } from "react";
+import { StepData, NodeConfigMenuProps } from "../types/node-config-menu.types";
 
 const toTitleCase = (str: string): string => {
-  return str.split('_').map(word => {
-    return word.charAt(0).toUpperCase() + word.slice(1);
-  }).join(' ');
+  return str
+    .split("_")
+    .map((word) => {
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
 };
 
-export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, workflowFilename }) => {
+export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({
+  node,
+  onClose,
+  workflowFilename,
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedStepData, setEditedStepData] = useState<StepData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [localStepData, setLocalStepData] = useState<StepData | null>(null);
-  
+
   if (!node || !node.data || !node.data.stepData) return null;
-  
+
   useEffect(() => {
     if (node && node.data && node.data.stepData) {
       setLocalStepData(node.data.stepData);
@@ -26,97 +33,100 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
       setSuccess(false);
     }
   }, [node]);
-  
+
   useEffect(() => {
     const handleEscKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         onClose();
       }
     };
-    
-    document.addEventListener('keydown', handleEscKey);
-    
+
+    document.addEventListener("keydown", handleEscKey);
+
     return () => {
-      document.removeEventListener('keydown', handleEscKey);
+      document.removeEventListener("keydown", handleEscKey);
     };
   }, [onClose]);
-  
+
   const stepData: StepData = localStepData || node.data.stepData;
-  
+
   if (isEditing && !editedStepData) {
-    setEditedStepData({...stepData});
+    setEditedStepData({ ...stepData });
   }
-  
+
   const [cssSelectors, setCssSelectors] = useState<string[]>([]);
-  const [newSelector, setNewSelector] = useState('');
-  
+  const [newSelector, setNewSelector] = useState("");
+
   if (isEditing && editedStepData?.cssSelector && cssSelectors.length === 0) {
-    setCssSelectors(editedStepData.cssSelector.split(' '));
+    setCssSelectors(editedStepData.cssSelector.split(" "));
   }
-  
+
   const handleInputChange = (field: keyof StepData, value: any) => {
     if (editedStepData) {
       setEditedStepData({
         ...editedStepData,
-        [field]: value
+        [field]: value,
       });
     }
   };
-  
+
   const handleAddSelector = () => {
-    if (newSelector.trim() !== '') {
+    if (newSelector.trim() !== "") {
       const updatedSelectors = [...cssSelectors, newSelector.trim()];
       setCssSelectors(updatedSelectors);
-      setNewSelector('');
-      
+      setNewSelector("");
+
       // Update the editedStepData
       if (editedStepData) {
         setEditedStepData({
           ...editedStepData,
-          cssSelector: updatedSelectors.join(' ')
+          cssSelector: updatedSelectors.join(" "),
         });
       }
     }
   };
-  
+
   const handleRemoveSelector = (index: number) => {
     const updatedSelectors = cssSelectors.filter((_, i) => i !== index);
     setCssSelectors(updatedSelectors);
-    
+
     if (editedStepData) {
       setEditedStepData({
         ...editedStepData,
-        cssSelector: updatedSelectors.join(' ')
+        cssSelector: updatedSelectors.join(" "),
       });
     }
   };
-  
+
   const handleSubmit = async () => {
     if (!editedStepData) return;
-    
+
     if (cssSelectors.length > 0) {
-      editedStepData.cssSelector = cssSelectors.join(' ');
+      editedStepData.cssSelector = cssSelectors.join(" ");
     }
-    
+
     setIsSubmitting(true);
     setError(null);
     setSuccess(false);
-    
+
     try {
-      const response = await fetch('http://localhost:8000/api/workflows/update', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          filename: workflowFilename,
-          nodeId: node.id,
-          stepData: editedStepData
-        }),
-      });
-      
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/workflows/update",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            filename: workflowFilename,
+            nodeId: node.id,
+            stepData: editedStepData,
+          }),
+        }
+      );
+
       const result = await response.json();
-      
+
       if (result.success) {
         setSuccess(true);
         setIsEditing(false);
@@ -125,21 +135,23 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
           node.data.stepData = editedStepData;
         }
       } else {
-        setError(result.error || 'Failed to update workflow');
+        setError(result.error || "Failed to update workflow");
       }
     } catch (err) {
-      setError('Network error: ' + (err instanceof Error ? err.message : String(err)));
+      setError(
+        "Network error: " + (err instanceof Error ? err.message : String(err))
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   const handleCancel = () => {
     setIsEditing(false);
     setEditedStepData(null);
     setError(null);
     setCssSelectors([]);
-    setNewSelector('');
+    setNewSelector("");
   };
 
   return (
@@ -158,11 +170,11 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
       <div className="p-4">
         {/* step type */}
         <div className="mb-3 break-words">
-          <strong>Step Type:</strong>{' '}
+          <strong>Step Type:</strong>{" "}
           {isEditing ? (
             <select
-              value={editedStepData?.type || 'navigation'}
-              onChange={e => handleInputChange('type', e.target.value)}
+              value={editedStepData?.type || "navigation"}
+              onChange={(e) => handleInputChange("type", e.target.value)}
               className="ml-1 rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
             >
               <option value="navigation">Navigation</option>
@@ -183,22 +195,22 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
         )}
 
         {/* URL (only for first node) */}
-        {(stepData.url || isEditing) && node.id === '0' && (
+        {(stepData.url || isEditing) && node.id === "0" && (
           <div className="mb-3">
             <strong>URL:</strong>
             {isEditing ? (
               <input
                 type="text"
-                value={editedStepData?.url || ''}
-                onChange={e => handleInputChange('url', e.target.value)}
+                value={editedStepData?.url || ""}
+                onChange={(e) => handleInputChange("url", e.target.value)}
                 className="mt-1 w-full rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
               />
             ) : (
               <a
-                href={stepData.url || ''}
+                href={stepData.url || ""}
                 target="_blank"
                 rel="noopener noreferrer"
-                title={stepData.url || ''}
+                title={stepData.url || ""}
                 className="ml-1 break-all text-blue-400 hover:underline"
               >
                 {stepData.url && stepData.url.length > 40
@@ -243,7 +255,7 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
                   <input
                     type="text"
                     value={newSelector}
-                    onChange={e => setNewSelector(e.target.value)}
+                    onChange={(e) => setNewSelector(e.target.value)}
                     className="flex-1 rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
                     placeholder="Add selector..."
                   />
@@ -257,17 +269,15 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
               </div>
             ) : (
               <div className="mt-1 flex flex-wrap gap-2">
-                {stepData.cssSelector
-                  ?.split(' ')
-                  .map((sel, idx) => (
-                    <span
-                      key={idx}
-                      title={sel.length > 65 ? sel : undefined}
-                      className="rounded bg-gray-700 px-2 py-0.5 text-xs"
-                    >
-                      {sel.length > 65 ? `${sel.slice(0, 62)}...` : sel}
-                    </span>
-                  ))}
+                {stepData.cssSelector?.split(" ").map((sel, idx) => (
+                  <span
+                    key={idx}
+                    title={sel.length > 65 ? sel : undefined}
+                    className="rounded bg-gray-700 px-2 py-0.5 text-xs"
+                  >
+                    {sel.length > 65 ? `${sel.slice(0, 62)}...` : sel}
+                  </span>
+                ))}
               </div>
             )}
           </div>
@@ -280,8 +290,8 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
             {isEditing ? (
               <input
                 type="text"
-                value={editedStepData?.xpath || ''}
-                onChange={e => handleInputChange('xpath', e.target.value)}
+                value={editedStepData?.xpath || ""}
+                onChange={(e) => handleInputChange("xpath", e.target.value)}
                 className="mt-1 w-full rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
               />
             ) : (
@@ -297,12 +307,14 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
         {/* Element tag */}
         {(stepData.elementTag || isEditing) && (
           <div className="mb-3">
-            <strong>Element Tag:</strong>{' '}
+            <strong>Element Tag:</strong>{" "}
             {isEditing ? (
               <input
                 type="text"
-                value={editedStepData?.elementTag || ''}
-                onChange={e => handleInputChange('elementTag', e.target.value)}
+                value={editedStepData?.elementTag || ""}
+                onChange={(e) =>
+                  handleInputChange("elementTag", e.target.value)
+                }
                 className="mt-1 rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
               />
             ) : (
@@ -318,9 +330,9 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
             {isEditing ? (
               <input
                 type="text"
-                value={editedStepData?.elementText || ''}
-                onChange={e =>
-                  handleInputChange('elementText', e.target.value)
+                value={editedStepData?.elementText || ""}
+                onChange={(e) =>
+                  handleInputChange("elementText", e.target.value)
                 }
                 className="mt-1 w-full rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
               />
@@ -337,9 +349,9 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
             {isEditing ? (
               <input
                 type="text"
-                value={editedStepData?.selectedText || ''}
-                onChange={e =>
-                  handleInputChange('selectedText', e.target.value)
+                value={editedStepData?.selectedText || ""}
+                onChange={(e) =>
+                  handleInputChange("selectedText", e.target.value)
                 }
                 className="mt-1 w-full rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
               />
@@ -356,8 +368,8 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
             {isEditing ? (
               <input
                 type="text"
-                value={editedStepData?.value || ''}
-                onChange={e => handleInputChange('value', e.target.value)}
+                value={editedStepData?.value || ""}
+                onChange={(e) => handleInputChange("value", e.target.value)}
                 className="mt-1 w-full rounded border border-gray-600 bg-[#333] px-2 py-1 text-sm"
               />
             ) : (
@@ -385,7 +397,7 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({ node, onClose, w
                 disabled={isSubmitting}
                 className="rounded bg-blue-400 px-3 py-1 text-sm hover:bg-blue-500 disabled:opacity-60"
               >
-                {isSubmitting ? 'Saving…' : 'Save'}
+                {isSubmitting ? "Saving…" : "Save"}
               </button>
               <button
                 onClick={handleCancel}

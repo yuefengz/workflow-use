@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
-import LogViewer from './log-viewer';
-import { PlayButtonProps, InputField } from '../types/play-button.types';
+import React, { useState } from "react";
+import LogViewer from "./log-viewer";
+import { PlayButtonProps, InputField } from "../types/play-button.types";
 
-export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMetadata }) => {
+export const PlayButton: React.FC<PlayButtonProps> = ({
+  workflowName,
+  workflowMetadata,
+}) => {
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showLogViewer, setShowLogViewer] = useState<boolean>(false);
   const [isRunning, setIsRunning] = useState<boolean>(false);
@@ -10,11 +13,11 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
   const [inputFields, setInputFields] = useState<InputField[]>([]);
   const [taskId, setTaskId] = useState<string | null>(null);
   const [logPosition, setLogPosition] = useState<number>(0);
-  const [workflowStatus, setWorkflowStatus] = useState<string>('idle');
+  const [workflowStatus, setWorkflowStatus] = useState<string>("idle");
 
   const openModal = () => {
     if (!workflowName) return;
-    
+
     setShowModal(true);
     setError(null);
 
@@ -23,7 +26,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
         name: input.name,
         type: input.type,
         required: input.required,
-        value: input.type === 'boolean' ? false : ''
+        value: input.type === "boolean" ? false : "",
       }));
       setInputFields(fields);
     } else {
@@ -33,12 +36,12 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
 
   const closeModal = () => {
     setShowModal(false);
-    
+
     if (!isRunning) {
       resetState();
     }
   };
-  
+
   const closeLogViewer = () => {
     setShowLogViewer(false);
     resetState();
@@ -50,7 +53,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
     setInputFields([]);
     setTaskId(null);
     setLogPosition(0);
-    setWorkflowStatus('idle');
+    setWorkflowStatus("idle");
   };
 
   const handleInputChange = (index: number, value: any) => {
@@ -61,35 +64,44 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
 
   const executeWorkflow = async () => {
     if (!workflowName) return;
-    
-    const missingInputs = inputFields.filter(field => field.required && !field.value);
+
+    const missingInputs = inputFields.filter(
+      (field) => field.required && !field.value
+    );
     if (missingInputs.length > 0) {
-      setError(`Missing required inputs: ${missingInputs.map(f => f.name).join(', ')}`);
+      setError(
+        `Missing required inputs: ${missingInputs
+          .map((f) => f.name)
+          .join(", ")}`
+      );
       return;
     }
-    
+
     setIsRunning(true);
     setError(null);
     setTaskId(null);
     setLogPosition(0);
-    setWorkflowStatus('idle');
-    
+    setWorkflowStatus("idle");
+
     try {
       const inputs: Record<string, any> = {};
-      inputFields.forEach(field => {
+      inputFields.forEach((field) => {
         inputs[field.name] = field.value;
       });
-      
-      const response = await fetch('http://localhost:8000/api/workflows/execute', {
-          method: 'POST',
+
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/workflows/execute",
+        {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
-          name: workflowName,
-          inputs
-        }),
-      });
+            name: workflowName,
+            inputs,
+          }),
+        }
+      );
 
       const data = await response.json();
       setTaskId(data.task_id);
@@ -98,21 +110,25 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
       setShowLogViewer(true);
       setShowModal(false);
     } catch (err) {
-      console.error('Failed to execute workflow:', err);
-      setError('An error occurred while executing the workflow');
+      console.error("Failed to execute workflow:", err);
+      setError("An error occurred while executing the workflow");
     }
   };
-  
+
   const handleStatusChange = (status: string) => {
     setWorkflowStatus(status);
-    
-    if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+
+    if (
+      status === "completed" ||
+      status === "failed" ||
+      status === "cancelled"
+    ) {
       setIsRunning(false);
     }
   };
-  
+
   const handleCancelWorkflow = () => {
-    setWorkflowStatus('cancelling');
+    setWorkflowStatus("cancelling");
   };
 
   const handleWorkflowError = (errorMessage: string) => {
@@ -175,17 +191,19 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
                         </span>
                       </label>
 
-                      {f.type === 'boolean' ? (
+                      {f.type === "boolean" ? (
                         <input
                           type="checkbox"
                           checked={f.value as boolean}
-                          onChange={e => handleInputChange(i, e.target.checked)}
+                          onChange={(e) =>
+                            handleInputChange(i, e.target.checked)
+                          }
                         />
                       ) : (
                         <input
-                          type={f.type === 'number' ? 'number' : 'text'}
+                          type={f.type === "number" ? "number" : "text"}
                           value={f.value as string | number}
-                          onChange={e => handleInputChange(i, e.target.value)}
+                          onChange={(e) => handleInputChange(i, e.target.value)}
                           className="w-full rounded border border-gray-600 bg-[#333] px-3 py-2 text-sm text-white"
                         />
                       )}
@@ -223,16 +241,16 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ workflowName, workflowMe
             <div className="flex items-center justify-between border-b border-gray-700 p-4">
               <div>
                 Workflow Execution
-                {workflowStatus !== 'running' &&
-                  ` (${workflowStatus.charAt(0).toUpperCase()}${workflowStatus.slice(
-                    1,
-                  )})`}
+                {workflowStatus !== "running" &&
+                  ` (${workflowStatus
+                    .charAt(0)
+                    .toUpperCase()}${workflowStatus.slice(1)})`}
               </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
               <LogViewer
-                taskId={taskId} 
+                taskId={taskId}
                 initialPosition={logPosition}
                 onStatusChange={handleStatusChange}
                 onError={handleWorkflowError}

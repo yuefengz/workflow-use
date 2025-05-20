@@ -1,4 +1,9 @@
-import React, { useState, useEffect, useCallback, useLayoutEffect, MouseEvent } from 'react';
+import React, {
+  useState,
+  useCallback,
+  useLayoutEffect,
+  MouseEvent,
+} from "react";
 import {
   ReactFlow,
   Background,
@@ -9,28 +14,43 @@ import {
   useEdgesState,
   type OnConnect,
   useReactFlow,
-} from '@xyflow/react';
-import {type Node } from '@xyflow/react';
-import { NodeData } from '../types/node-config-menu.types';
-import { jsonToFlow } from '../utils/json-to-flow';
-import { type WorkflowMetadata } from '../types/workflow-layout.types';
-import { Sidebar } from './sidebar';
-import { NodeConfigMenu } from './node-config-menu';
-import { PlayButton } from './play-button';
-import NoWorkflowsMessage from './no-workflow-message';
+} from "@xyflow/react";
+import { type Node } from "@xyflow/react";
+import { NodeData } from "../types/node-config-menu.types";
+import { jsonToFlow } from "../utils/json-to-flow";
+import { type WorkflowMetadata } from "../types/workflow-layout.types";
+import { Sidebar } from "./sidebar";
+import { NodeConfigMenu } from "./node-config-menu";
+import { PlayButton } from "./play-button";
+import NoWorkflowsMessage from "./no-workflow-message";
+import {
+  useWorkflows,
+  useWorkflow,
+  useUpdateWorkflowMetadata,
+} from "../lib/api/workflow";
 
 const WorkflowLayout: React.FC = () => {
-  const [workflows, setWorkflows] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
-  const [workflowMetadata, setWorkflowMetadata] = useState<WorkflowMetadata | null>(null);
-  const [allWorkflowsMetadata, setAllWorkflowsMetadata] = useState<Record<string, WorkflowMetadata>>({});
-  const [isLoading, setIsLoading] = useState(true);
-  // Store node positions for each workflow
-  const [savedNodePositions, setSavedNodePositions] = useState<Record<string, Record<string, { x: number, y: number }>>>({});
+  const [workflowMetadata, setWorkflowMetadata] =
+    useState<WorkflowMetadata | null>(null);
+  const [savedNodePositions, setSavedNodePositions] = useState<
+    Record<string, Record<string, { x: number; y: number }>>
+  >({});
   const { fitView } = useReactFlow();
+
+  // Query for fetching all workflows
+  const { data: workflows = [], isLoading: isLoadingWorkflows } =
+    useWorkflows();
+
+  // Query for fetching a specific workflow
+  const { data: selectedWorkflow, isLoading: isLoadingSelectedWorkflow } =
+    useWorkflow(selected);
+
+  // Mutation for updating workflow metadata
+  const updateMetadataMutation = useUpdateWorkflowMetadata();
 
   const onConnect: OnConnect = useCallback(
     (connection) => setEdges((edges) => addEdge(connection, edges)),
@@ -46,7 +66,7 @@ const WorkflowLayout: React.FC = () => {
   const closeNodeMenu = useCallback(() => {
     setSelectedNode(null);
   }, []);
-  
+
   // Fit view when nodes change
   useLayoutEffect(() => {
     if (nodes.length > 0) {
@@ -56,125 +76,11 @@ const WorkflowLayout: React.FC = () => {
     }
   }, [nodes.length, fitView]);
 
-  // Function to fetch all workflows
-  const fetchWorkflows = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      // Add cache-busting query parameter to prevent caching
-      const resp = await fetch(`http://localhost:8000/api/workflows?_=${Date.now()}`);
-      if (!resp.ok) {
-        throw new Error(`Failed to fetch workflows: ${resp.status} ${resp.statusText}`);
-      }
-      
-      const files = await resp.json();
-      setWorkflows(files);
-      
-      // Auto-select the first workflow if available and none is currently selected
-      if (files && files.length > 0 && !selected) {
-        setSelected(files[0]);
-      }
-      
-      // Fetch metadata for all workflows - but don't await all of them
-      // This prevents one slow request from blocking everything
-      files.forEach(async (workflowName: string) => {
-        try {
-          // Add cache-busting query parameter to prevent caching
-          const response = await fetch(`http://localhost:8000/api/workflows/${workflowName}?_=${Date.now()}`);
-          if (response.ok) {
-            const workflowData = await response.json();
-            const flowData = jsonToFlow(workflowData);
-            
-            // Store metadata in the allWorkflowsMetadata state
-            setAllWorkflowsMetadata(prev => ({
-              ...prev,
-              [workflowName]: flowData.metadata
-            }));
-          }
-        } catch (error) {
-          console.error(`Error fetching metadata for ${workflowName}:`, error);
-          return null;
-        }
-      });
-    } catch (error) {
-      console.error('Error fetching workflows:', error);
-    } finally {
-      // Always set loading to false, even if there are errors
-      setIsLoading(false);
-    }
-  }, [selected]);
-  
-  // Function to fetch a specific workflow
-  const fetchWorkflow = useCallback(async (workflowName: string) => {
-    try {
-      // Add cache-busting query parameter to prevent caching
-      const resp = await fetch(`http://localhost:8000/api/workflows/${workflowName}?_=${Date.now()}`);
-      if (!resp.ok) return;
-      
-      const wf = await resp.json();
-      const flowData = jsonToFlow(wf);
-      
-      // Apply saved positions if available
-      if (savedNodePositions[workflowName]) {
-        const nodesWithSavedPositions = flowData.nodes.map((node: any) => {
-          const savedPosition = savedNodePositions[workflowName][node.id];
-          if (savedPosition) {
-            return {
-              ...node,
-              position: savedPosition
-            };
-          }
-          return node;
-        });
-        
-        setNodes(nodesWithSavedPositions as any);
-      } else {
-        setNodes(flowData.nodes as any);
-      }
-      
-      setEdges(flowData.edges as any);
-      setWorkflowMetadata(flowData.metadata);
-    } catch (error) {
-      console.error(`Error fetching workflow ${workflowName}:`, error);
-    }
-  }, [savedNodePositions]);
-  
-  // Fetch workflows on component mount
-  useEffect(() => {
-    fetchWorkflows();
-  }, [fetchWorkflows]);
+  // Update nodes and edges when selected workflow changes
+  React.useEffect(() => {
+    if (selectedWorkflow) {
+      const flowData = jsonToFlow(selectedWorkflow);
 
-  // Handle node drag stop to save positions
-  const onNodeDragStop = useCallback(
-    (_: React.MouseEvent, node: Node) => {
-      if (selected) {
-        // Update the saved positions for just this node
-        setSavedNodePositions(prev => {
-          const workflowPositions = prev[selected] || {};
-          return {
-            ...prev,
-            [selected]: {
-              ...workflowPositions,
-              [node.id]: { x: node.position.x, y: node.position.y }
-            }
-          };
-        });
-      }
-    },
-    [selected]
-  );
-  
-  // Load and convert selected workflow
-  useEffect(() => {
-    if (!selected) return;
-    
-    async function fetchAndConvert() {
-      // Add cache-busting query parameter to prevent caching
-      const resp = await fetch(`http://localhost:8000/api/workflows/${selected}?_=${Date.now()}`);
-      if (!resp.ok) return;
-      
-      const wf = await resp.json();
-      const flowData = jsonToFlow(wf);
-      
       // Apply saved positions if available
       if (selected && savedNodePositions[selected]) {
         const nodesWithSavedPositions = flowData.nodes.map((node: any) => {
@@ -182,51 +88,48 @@ const WorkflowLayout: React.FC = () => {
           if (savedPosition) {
             return {
               ...node,
-              position: savedPosition
+              position: savedPosition,
             };
           }
           return node;
         });
-        
         setNodes(nodesWithSavedPositions as any);
       } else {
         setNodes(flowData.nodes as any);
       }
-      
+
       setEdges(flowData.edges as any);
       setWorkflowMetadata(flowData.metadata);
     }
-    
-    fetchAndConvert();
-  }, [selected]);
-  
-  // Handle workflow metadata updates
-  const updateWorkflowMetadata = async (updatedMetadata: WorkflowMetadata) => {
-    if (!selected) return;
-    
-    try {
-      // Send updated metadata to the backend
-      const response = await fetch('http://localhost:8000/api/workflows/update-metadata', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: selected,
-          metadata: updatedMetadata
-        }),
-      });
-      
-      if (response.ok) {
-        // Update local state
-        setWorkflowMetadata(updatedMetadata);
-      } else {
-        console.error('Failed to update workflow metadata');
+  }, [selectedWorkflow, selected, savedNodePositions]);
+
+  // Handle node drag stop to save positions
+  const onNodeDragStop = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      if (selected) {
+        setSavedNodePositions((prev) => {
+          const workflowPositions = prev[selected] || {};
+          return {
+            ...prev,
+            [selected]: {
+              ...workflowPositions,
+              [node.id]: { x: node.position.x, y: node.position.y },
+            },
+          };
+        });
       }
-    } catch (error) {
-      console.error('Error updating workflow metadata:', error);
+    },
+    [selected]
+  );
+
+  // Auto-select first workflow if none selected
+  React.useEffect(() => {
+    if (workflows.length > 0 && !selected) {
+      setSelected(workflows[0]);
     }
-  };
+  }, [workflows, selected]);
+
+  const isLoading = isLoadingWorkflows || isLoadingSelectedWorkflow;
 
   if (isLoading) {
     return (
@@ -250,8 +153,14 @@ const WorkflowLayout: React.FC = () => {
         onSelect={setSelected}
         selected={selected}
         workflowMetadata={workflowMetadata}
-        onUpdateMetadata={updateWorkflowMetadata}
-        allWorkflowsMetadata={allWorkflowsMetadata}
+        onUpdateMetadata={async (metadata) => {
+          if (selected) {
+            await updateMetadataMutation.mutateAsync({
+              name: selected,
+              metadata,
+            });
+          }
+        }}
       />
 
       <div className="relative flex-1">
@@ -283,10 +192,13 @@ const WorkflowLayout: React.FC = () => {
               <button
                 title="Refresh workflow"
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2a2a2a] text-white shadow transition-transform duration-200 ease-in-out hover:scale-105 hover:bg-blue-500"
-                onClick={() => {
-                  setAllWorkflowsMetadata({});
-                  fetchWorkflows();
-                  if (selected) fetchWorkflow(selected);
+                onClick={async () => {
+                  if (selected && workflowMetadata) {
+                    await updateMetadataMutation.mutateAsync({
+                      name: selected,
+                      metadata: workflowMetadata,
+                    });
+                  }
                 }}
               >
                 {/* hero‑icons refresh */}

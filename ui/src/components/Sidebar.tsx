@@ -1,6 +1,15 @@
 import React from "react";
-import { SidebarProps } from "../types/sidebar.types";
 import WorkflowItem from "./workflow-item";
+import { WorkflowMetadata } from "../types/workflow-layout.types";
+
+interface SidebarProps {
+  workflows: string[];
+  onSelect: (workflow: string) => void;
+  selected: string | null;
+  workflowMetadata: WorkflowMetadata | null;
+  onUpdateMetadata: (metadata: WorkflowMetadata) => Promise<void>;
+  allWorkflowsMetadata?: Record<string, WorkflowMetadata>;
+}
 
 export const Sidebar: React.FC<SidebarProps> = ({
   workflows,

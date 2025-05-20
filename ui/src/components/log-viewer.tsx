@@ -37,7 +37,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
     const pollLogs = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8000/api/workflows/logs/${taskId}?position=${position}`
+          `http://127.0.0.1:8000/api/workflows/logs/${taskId}?position=${position}`
         );
 
         if (!response.ok) {
@@ -88,7 +88,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/workflows/tasks/${taskId}/cancel`,
+        `http://127.0.0.1:8000/api/workflows/tasks/${taskId}/cancel`,
         {
           method: "POST",
           headers: {
