@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useLayoutEffect,
   MouseEvent,
+  useEffect,
 } from "react";
 import {
   ReactFlow,
@@ -19,15 +20,11 @@ import { type Node } from "@xyflow/react";
 import { NodeData } from "../types/node-config-menu.types";
 import { jsonToFlow } from "../utils/json-to-flow";
 import { type WorkflowMetadata } from "../types/workflow-layout.types";
-import { Sidebar } from "./sidebar";
+import Sidebar from "./sidebar";
 import { NodeConfigMenu } from "./node-config-menu";
 import { PlayButton } from "./play-button";
 import NoWorkflowsMessage from "./no-workflow-message";
-import {
-  useWorkflows,
-  useWorkflow,
-  useUpdateWorkflowMetadata,
-} from "../lib/api/workflow";
+import { $api } from "../lib/api";
 
 const WorkflowLayout: React.FC = () => {
   const [selected, setSelected] = useState<string | null>(null);
@@ -41,16 +38,44 @@ const WorkflowLayout: React.FC = () => {
   >({});
   const { fitView } = useReactFlow();
 
-  // Query for fetching all workflows
-  const { data: workflows = [], isLoading: isLoadingWorkflows } =
-    useWorkflows();
+  // ----- Queries using $api -----
+  // Fetch all workflows
+  const { data: workflowsResponse, isLoading: isLoadingWorkflows } =
+    $api.useQuery("get", "/api/workflows");
 
-  // Query for fetching a specific workflow
+  const workflows: string[] = workflowsResponse?.workflows ?? [];
+
+  // Fetch a specific workflow (enabled only when selected is truthy)
   const { data: selectedWorkflow, isLoading: isLoadingSelectedWorkflow } =
-    useWorkflow(selected);
+    $api.useQuery(
+      "get",
+      "/api/workflows/{name}",
+      selected
+        ? {
+            params: { path: { name: selected } },
+          }
+        : ({} as any),
+      {
+        enabled: !!selected,
+      }
+    );
 
   // Mutation for updating workflow metadata
-  const updateMetadataMutation = useUpdateWorkflowMetadata();
+  const updateMetadataMutation = $api.useMutation(
+    "post",
+    "/api/workflows/update-metadata"
+  );
+
+  const updateWorkflowMetadata = useCallback(
+    async (name: string, metadata: WorkflowMetadata) => {
+      await updateMetadataMutation.mutateAsync({
+        body: { name, metadata } as any,
+      });
+    },
+    [updateMetadataMutation]
+  );
+
+  const isUpdating = updateMetadataMutation.isPending;
 
   const onConnect: OnConnect = useCallback(
     (connection) => setEdges((edges) => addEdge(connection, edges)),
@@ -77,14 +102,15 @@ const WorkflowLayout: React.FC = () => {
   }, [nodes.length, fitView]);
 
   // Update nodes and edges when selected workflow changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedWorkflow) {
       const flowData = jsonToFlow(selectedWorkflow);
 
       // Apply saved positions if available
       if (selected && savedNodePositions[selected]) {
+        const savedPositionsForWorkflow = savedNodePositions[selected] || {};
         const nodesWithSavedPositions = flowData.nodes.map((node: any) => {
-          const savedPosition = savedNodePositions[selected][node.id];
+          const savedPosition = savedPositionsForWorkflow[node.id];
           if (savedPosition) {
             return {
               ...node,
@@ -101,7 +127,7 @@ const WorkflowLayout: React.FC = () => {
       setEdges(flowData.edges as any);
       setWorkflowMetadata(flowData.metadata);
     }
-  }, [selectedWorkflow, selected, savedNodePositions]);
+  }, [selectedWorkflow, selected, savedNodePositions, setNodes, setEdges]);
 
   // Handle node drag stop to save positions
   const onNodeDragStop = useCallback(
@@ -123,9 +149,9 @@ const WorkflowLayout: React.FC = () => {
   );
 
   // Auto-select first workflow if none selected
-  React.useEffect(() => {
+  useEffect(() => {
     if (workflows.length > 0 && !selected) {
-      setSelected(workflows[0]);
+      setSelected(workflows[0]!);
     }
   }, [workflows, selected]);
 
@@ -153,12 +179,9 @@ const WorkflowLayout: React.FC = () => {
         onSelect={setSelected}
         selected={selected}
         workflowMetadata={workflowMetadata}
-        onUpdateMetadata={async (metadata) => {
+        onUpdateMetadata={async (metadata: WorkflowMetadata) => {
           if (selected) {
-            await updateMetadataMutation.mutateAsync({
-              name: selected,
-              metadata,
-            });
+            await updateWorkflowMetadata(selected, metadata);
           }
         }}
       />
@@ -194,12 +217,10 @@ const WorkflowLayout: React.FC = () => {
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2a2a2a] text-white shadow transition-transform duration-200 ease-in-out hover:scale-105 hover:bg-blue-500"
                 onClick={async () => {
                   if (selected && workflowMetadata) {
-                    await updateMetadataMutation.mutateAsync({
-                      name: selected,
-                      metadata: workflowMetadata,
-                    });
+                    await updateWorkflowMetadata(selected, workflowMetadata);
                   }
                 }}
+                disabled={isUpdating}
               >
                 {/* hero‑icons refresh */}
                 <svg

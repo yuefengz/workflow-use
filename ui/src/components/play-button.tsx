@@ -58,8 +58,10 @@ export const PlayButton: React.FC<PlayButtonProps> = ({
 
   const handleInputChange = (index: number, value: any) => {
     const updatedFields = [...inputFields];
-    updatedFields[index].value = value;
-    setInputFields(updatedFields);
+    if (updatedFields[index]) {
+      updatedFields[index].value = value;
+      setInputFields(updatedFields);
+    }
   };
 
   const executeWorkflow = async () => {

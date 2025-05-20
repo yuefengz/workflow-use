@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { StepData, NodeConfigMenuProps } from "../types/node-config-menu.types";
+import { fetchClient } from "../lib/api";
 
 const toTitleCase = (str: string): string => {
   return str
@@ -110,24 +111,17 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({
     setSuccess(false);
 
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/workflows/update",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            filename: workflowFilename,
-            nodeId: node.id,
-            stepData: editedStepData,
-          }),
-        }
-      );
+      const response = await fetchClient.POST("/api/workflows/update", {
+        body: {
+          filename: workflowFilename ?? "",
+          nodeId: parseInt(node.id),
+          stepData: editedStepData as unknown as Record<string, never>,
+        },
+      });
 
-      const result = await response.json();
+      const result = response.data;
 
-      if (result.success) {
+      if (result?.success) {
         setSuccess(true);
         setIsEditing(false);
         setLocalStepData(editedStepData);
@@ -135,7 +129,7 @@ export const NodeConfigMenu: React.FC<NodeConfigMenuProps> = ({
           node.data.stepData = editedStepData;
         }
       } else {
-        setError(result.error || "Failed to update workflow");
+        setError(result?.error || "Failed to update workflow");
       }
     } catch (err) {
       setError(

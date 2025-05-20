@@ -1,5 +1,8 @@
-import React, { useState, ChangeEvent } from 'react';
-import { WorkflowMetadata, WorkflowItemProps } from '../types/workflow-layout.types';
+import React, { useState, ChangeEvent } from "react";
+import {
+  WorkflowMetadata,
+  WorkflowItemProps,
+} from "../types/workflow-layout.types";
 
 const WorkflowItem: React.FC<WorkflowItemProps> = ({
   id,
@@ -18,7 +21,9 @@ const WorkflowItem: React.FC<WorkflowItemProps> = ({
         <>
           <span className="text-md">{metadata.name}</span>
           {metadata.version && (
-            <span className="text-xs text-[#888] ml-1.5">v{metadata.version}</span>
+            <span className="text-xs text-[#888] ml-1.5">
+              v{metadata.version}
+            </span>
           )}
         </>
       );
@@ -31,10 +36,10 @@ const WorkflowItem: React.FC<WorkflowItemProps> = ({
     );
   };
 
-  const change = (field: keyof WorkflowMetadata) => (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) =>
-    edited && setEdited({ ...edited, [field]: e.target.value });
+  const change =
+    (field: keyof WorkflowMetadata) =>
+    (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      edited && setEdited({ ...edited, [field]: e.target.value });
 
   const save = async () => {
     if (!edited) return;
@@ -45,12 +50,14 @@ const WorkflowItem: React.FC<WorkflowItemProps> = ({
 
   const editForm = metadata && (
     <div>
-      {(['name', 'version'] as (keyof WorkflowMetadata)[]).map((f) => (
+      {(["name", "version"] as (keyof WorkflowMetadata)[]).map((f) => (
         <label key={f} className="block text-xs mb-2">
-          <span className="block text-[#aaa] mb-1">{f[0].toUpperCase() + f.slice(1)}</span>
+          <span className="block text-[#aaa] mb-1">
+            {f[0]?.toUpperCase() + f.slice(1)}
+          </span>
           <input
             className="w-full bg-[#333] border border-[#555] text-white p-1.5 rounded text-xs"
-            value={edited?.[f] ?? ''}
+            value={edited?.[f] ?? ""}
             onChange={change(f)}
           />
         </label>
@@ -60,11 +67,11 @@ const WorkflowItem: React.FC<WorkflowItemProps> = ({
         <span className="block text-[#aaa] mb-1">Description</span>
         <textarea
           className="w-full bg-[#333] border border-[#555] text-white p-1.5 rounded min-h-[60px] resize-y text-xs"
-          value={edited?.description ?? ''}
-          onChange={change('description')}
+          value={edited?.description ?? ""}
+          onChange={change("description")}
         />
       </label>
-  
+
       <div className="flex gap-2 justify-end">
         <button
           onClick={() => setIsEditing(false)}
@@ -76,10 +83,10 @@ const WorkflowItem: React.FC<WorkflowItemProps> = ({
           disabled={submitting}
           onClick={save}
           className={`bg-blue-400 hover:bg-blue-500 text-white py-1.5 px-3 rounded text-xs ${
-            submitting && 'opacity-70'
+            submitting && "opacity-70"
           }`}
         >
-          {submitting ? 'Saving…' : 'Save'}
+          {submitting ? "Saving…" : "Save"}
         </button>
       </div>
     </div>
@@ -115,7 +122,7 @@ const WorkflowItem: React.FC<WorkflowItemProps> = ({
       <li>
         <button
           className={`w-full text-left py-1.5 ${
-            selected ? 'font-semibold text-[#7ac5ff]' : 'text-[#ccc]'
+            selected ? "font-semibold text-[#7ac5ff]" : "text-[#ccc]"
           }`}
           onClick={() => onSelect(id)}
         >
