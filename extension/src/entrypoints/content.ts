@@ -208,6 +208,8 @@ function startRecorder() {
   document.addEventListener('keydown', handleKeydown, true);
   document.addEventListener('mouseover', handleMouseOver, true);
   document.addEventListener('mouseout', handleMouseOut, true);
+  document.addEventListener('focus', handleFocus, true);
+  document.addEventListener('blur', handleBlur, true);
   console.log('Permanently attached custom event listeners.');
 }
 
@@ -225,6 +227,8 @@ function stopRecorder() {
     document.removeEventListener('keydown', handleKeydown, true); // Remove keydown listener
     document.removeEventListener('mouseover', handleMouseOver, true);
     document.removeEventListener('mouseout', handleMouseOut, true);
+    document.removeEventListener('focus', handleFocus, true);
+    document.removeEventListener('blur', handleBlur, true);
   } else {
     console.log('Recorder not running, cannot stop.');
   }
@@ -397,6 +401,7 @@ function handleKeydown(event: KeyboardEvent) {
 
 // Store the current overlay to manage its lifecycle
 let currentOverlay: HTMLDivElement | null = null;
+let currentFocusOverlay: HTMLDivElement | null = null;
 
 // Handle mouseover to create overlay
 function handleMouseOver(event: MouseEvent) {
@@ -474,6 +479,69 @@ function handleMouseOut(event: MouseEvent) {
   }
 }
 
+// Handle focus to create red overlay for input elements
+function handleFocus(event: FocusEvent) {
+  if (!isRecordingActive) return;
+  const targetElement = event.target as HTMLElement;
+  if (
+    !targetElement ||
+    !['INPUT', 'TEXTAREA', 'SELECT'].includes(targetElement.tagName)
+  )
+    return;
+
+  // Remove any existing focus overlay to avoid duplicates
+  if (currentFocusOverlay) {
+    currentFocusOverlay.remove();
+    currentFocusOverlay = null;
+  }
+
+  try {
+    const xpath = getXPath(targetElement);
+    let elementToHighlight: HTMLElement | null = document.evaluate(
+      xpath,
+      document,
+      null,
+      XPathResult.FIRST_ORDERED_NODE_TYPE,
+      null
+    ).singleNodeValue as HTMLElement | null;
+    if (!elementToHighlight) {
+      const enhancedSelector = getEnhancedCSSSelector(targetElement, xpath);
+      elementToHighlight = document.querySelector(enhancedSelector);
+    }
+    if (elementToHighlight) {
+      const rect = elementToHighlight.getBoundingClientRect();
+      const focusOverlay = document.createElement('div');
+      focusOverlay.className = 'focus-overlay';
+      Object.assign(focusOverlay.style, {
+        position: 'absolute',
+        top: `${rect.top + window.scrollY}px`,
+        left: `${rect.left + window.scrollX}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
+        border: '2px solid red',
+        backgroundColor: 'rgba(255, 0, 0, 0.2)', // Red tint
+        pointerEvents: 'none',
+        zIndex: '2147483100', // Higher than mouseover overlay (2147483000)
+      });
+      document.body.appendChild(focusOverlay);
+      currentFocusOverlay = focusOverlay;
+    } else {
+      console.warn('No element found to highlight for focus, xpath:', xpath);
+    }
+  } catch (error) {
+    console.error('Error creating focus overlay:', error);
+  }
+}
+
+// Handle blur to remove focus overlay
+function handleBlur(event: FocusEvent) {
+  if (!isRecordingActive) return;
+  if (currentFocusOverlay) {
+    currentFocusOverlay.remove();
+    currentFocusOverlay = null;
+  }
+}
+
 export default defineContentScript({
   matches: ['<all_urls>'],
   main(ctx) {
@@ -528,6 +596,8 @@ export default defineContentScript({
       document.removeEventListener('keydown', handleKeydown, true);
       document.removeEventListener('mouseover', handleMouseOver, true);
       document.removeEventListener('mouseout', handleMouseOut, true);
+      document.removeEventListener('focus', handleFocus, true);
+      document.removeEventListener('blur', handleBlur, true);
       stopRecorder(); // Ensure rrweb is stopped
     });
 
