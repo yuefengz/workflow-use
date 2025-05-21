@@ -1,6 +1,6 @@
 from langchain_openai import ChatOpenAI
 
-from workflow_use.mcp.service import WorkflowMCPService
+from workflow_use.mcp.service import get_mcp_server
 
 # async def main():
 if __name__ == '__main__':
@@ -11,7 +11,7 @@ if __name__ == '__main__':
 	# For CLI execution like `fastmcp run workflow_use.mcp.server:mcp_app`,
 	# this __main__ block might be bypassed by FastMCP's runner,
 	# but it's good practice for direct Python execution.
-	mcp = WorkflowMCPService().get_mcp_server(llm_instance)
+	mcp = get_mcp_server(llm_instance, workflow_dir='./tmp')
 	mcp.run(
 		transport='sse',
 		host='0.0.0.0',

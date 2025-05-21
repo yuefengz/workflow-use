@@ -14,7 +14,7 @@ from langchain_openai import ChatOpenAI
 
 from workflow_use.builder.service import BuilderService
 from workflow_use.controller.service import WorkflowController
-from workflow_use.mcp.service import WorkflowMCPService
+from workflow_use.mcp.service import get_mcp_server
 from workflow_use.recorder.service import RecordingService  # Added import
 from workflow_use.workflow.service import Workflow
 
@@ -399,7 +399,6 @@ def run_workflow_command(
 		raise typer.Exit(code=1)
 
 
-
 @app.command(name='mcp-server', help='Starts the MCP server which expose all the created workflows as tools.')
 def mcp_server_command(
 	port: int = typer.Option(
@@ -416,13 +415,14 @@ def mcp_server_command(
 	typer.echo()  # Add space
 
 	llm_instance = ChatOpenAI(model='gpt-4o')
-	mcp = WorkflowMCPService().get_mcp_server(llm_instance)
+	mcp = get_mcp_server(llm_instance, workflow_dir='./tmp')
 
 	mcp.run(
 		transport='sse',
 		host='0.0.0.0',
 		port=port,
 	)
+
 
 @app.command('launch-gui', help='Launch the workflow visualizer GUI.')
 def launch_gui():
