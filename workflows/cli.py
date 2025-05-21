@@ -1,6 +1,9 @@
 import asyncio
 import json
+import os
+import subprocess
 import tempfile  # For temporary file handling
+import webbrowser
 from pathlib import Path
 
 import typer
@@ -25,13 +28,16 @@ app = typer.Typer(
 	no_args_is_help=True,
 )
 
-# Instantiate services (assuming OPENAI_API_KEY is set in environment)
+# Default LLM instance to None
+llm_instance = None
 try:
 	llm_instance = ChatOpenAI(model='gpt-4o')
 except Exception as e:
-	typer.secho(f'Error initializing LLM: {e}. Ensure OPENAI_API_KEY is set.', fg=typer.colors.RED)
-	# Potentially exit or provide a way to configure API key
-	llm_instance = None
+	typer.secho(f'Error initializing LLM: {e}. Would you like to set your OPENAI_API_KEY?', fg=typer.colors.RED)
+	set_openai_api_key = input('Set OPENAI_API_KEY? (y/n): ')
+	if set_openai_api_key.lower() == 'y':
+		os.environ['OPENAI_API_KEY'] = input('Enter your OPENAI_API_KEY: ')
+		llm_instance = ChatOpenAI(model='gpt-4o')
 
 builder_service = BuilderService(llm=llm_instance) if llm_instance else None
 # recorder_service = RecorderService() # Placeholder
@@ -393,6 +399,7 @@ def run_workflow_command(
 		raise typer.Exit(code=1)
 
 
+
 @app.command(name='mcp-server', help='Starts the MCP server which expose all the created workflows as tools.')
 def mcp_server_command(
 	port: int = typer.Option(
@@ -416,6 +423,30 @@ def mcp_server_command(
 		host='0.0.0.0',
 		port=port,
 	)
+
+@app.command('launch-gui', help='Launch the workflow visualizer GUI.')
+def launch_gui():
+	"""Launch the workflow visualizer GUI."""
+	typer.echo(typer.style('Launching workflow visualizer GUI...', bold=True))
+
+	logs_dir = Path('./tmp/logs')
+	logs_dir.mkdir(parents=True, exist_ok=True)
+	backend_log = open(logs_dir / 'backend.log', 'w')
+	frontend_log = open(logs_dir / 'frontend.log', 'w')
+
+	backend = subprocess.Popen(['uvicorn', 'backend.api:app', '--reload'], stdout=backend_log, stderr=subprocess.STDOUT)
+	typer.echo(typer.style('Starting frontend...', bold=True))
+	frontend = subprocess.Popen(['npm', 'run', 'dev'], cwd='../ui', stdout=frontend_log, stderr=subprocess.STDOUT)
+	typer.echo(typer.style('Opening browser...', bold=True))
+	webbrowser.open('http://localhost:5173')
+	try:
+		typer.echo(typer.style('Press Ctrl+C to stop the GUI and servers.', fg=typer.colors.YELLOW, bold=True))
+		backend.wait()
+		frontend.wait()
+	except KeyboardInterrupt:
+		typer.echo(typer.style('\nShutting down servers...', fg=typer.colors.RED, bold=True))
+		backend.terminate()
+		frontend.terminate()
 
 
 if __name__ == '__main__':
