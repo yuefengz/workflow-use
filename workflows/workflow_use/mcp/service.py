@@ -12,17 +12,20 @@ from workflow_use.workflow.service import Workflow
 
 def get_mcp_server(
 	llm_instance: BaseChatModel,
+	page_extraction_llm: BaseChatModel | None = None,
 	workflow_dir: str = './tmp',
 	name: str = 'WorkflowService',
 	description: str = 'Exposes workflows as MCP tools.',
 ):
 	mcp_app = FastMCP(name=name, description=description)
 
-	_setup_workflow_tools(mcp_app, llm_instance, workflow_dir)
+	_setup_workflow_tools(mcp_app, llm_instance, page_extraction_llm, workflow_dir)
 	return mcp_app
 
 
-def _setup_workflow_tools(mcp_app: FastMCP, llm_instance: BaseChatModel, workflow_dir: str):
+def _setup_workflow_tools(
+	mcp_app: FastMCP, llm_instance: BaseChatModel, page_extraction_llm: BaseChatModel | None, workflow_dir: str
+):
 	"""
 	Scans a directory for workflow.json files, loads them, and registers them as tools
 	with the FastMCP instance by dynamically setting function signatures.
@@ -36,7 +39,9 @@ def _setup_workflow_tools(mcp_app: FastMCP, llm_instance: BaseChatModel, workflo
 			schema = WorkflowDefinitionSchema.load_from_json(str(wf_file_path))
 
 			# Instantiate the workflow
-			workflow = Workflow(workflow_schema=schema, llm=llm_instance, browser=None, controller=None)
+			workflow = Workflow(
+				workflow_schema=schema, llm=llm_instance, page_extraction_llm=page_extraction_llm, browser=None, controller=None
+			)
 
 			params_for_signature = []
 			annotations_for_runner = {}

@@ -420,7 +420,9 @@ def mcp_server_command(
 	typer.echo()  # Add space
 
 	llm_instance = ChatOpenAI(model='gpt-4o')
-	mcp = get_mcp_server(llm_instance, workflow_dir='./tmp')
+	page_extraction_llm = ChatOpenAI(model='gpt-4o-mini')
+
+	mcp = get_mcp_server(llm_instance, page_extraction_llm=page_extraction_llm, workflow_dir='./tmp')
 
 	mcp.run(
 		transport='sse',
