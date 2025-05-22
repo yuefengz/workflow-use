@@ -13,10 +13,10 @@ from workflow_use.controller.views import (
 	InputTextDeterministicAction,
 	KeyPressDeterministicAction,
 	NavigationAction,
+	PageExtractionAction,
 	ScrollDeterministicAction,
 	SelectDropdownOptionDeterministicAction,
 )
-from workflow_use.schema.views import PageExtractionStep
 
 logger = logging.getLogger(__name__)
 
@@ -209,8 +209,9 @@ class WorkflowController(Controller):
 
 		@self.registry.action(
 			'Extract page content to retrieve specific information from the page, e.g. all company names, a specific description, all information about, links with companies in structured format or simply links',
+			param_model=PageExtractionAction,
 		)
-		async def extract_content(params: PageExtractionStep, browser: BrowserContext, page_extraction_llm: BaseChatModel):
+		async def extract_page_content(params: PageExtractionAction, browser: BrowserContext, page_extraction_llm: BaseChatModel):
 			page = await browser.get_current_page()
 			import markdownify
 

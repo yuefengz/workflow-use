@@ -32,7 +32,7 @@ from workflow_use.schema.views import (
 	WorkflowInputSchemaDefinition,
 	WorkflowStep,
 )
-from workflow_use.workflow.prompts import WORKFLOW_FALLBACK_PROMPT_TEMPLATE
+from workflow_use.workflow.prompts import STRUCTURED_OUTPUT_PROMPT, WORKFLOW_FALLBACK_PROMPT_TEMPLATE
 from workflow_use.workflow.views import WorkflowRunOutput
 
 logger = logging.getLogger(__name__)
@@ -96,12 +96,19 @@ class Workflow:
 		controller: WorkflowController | None = None,
 		browser: Browser | None = None,
 		llm: BaseChatModel | None = None,
+		page_extraction_llm: BaseChatModel | None = None,
 	) -> Workflow:
 		"""Load a workflow from a file."""
 		with open(file_path, 'r', encoding='utf-8') as f:
 			data = _json.load(f)
 		workflow_schema = WorkflowDefinitionSchema(**data)
-		return Workflow(workflow_schema=workflow_schema, controller=controller, browser=browser, llm=llm)
+		return Workflow(
+			workflow_schema=workflow_schema,
+			controller=controller,
+			browser=browser,
+			llm=llm,
+			page_extraction_llm=page_extraction_llm,
+		)
 
 	# --- Runners ---
 	async def _run_deterministic_step(self, step: DeterministicWorkflowStep, step_index: int) -> ActionResult:
@@ -398,9 +405,64 @@ class Workflow:
 					raise ValueError(f'Agent step {step_index + 1} failed: {e}')
 
 		return result
-	
+
 	# --- Convert all extracted stuff to final output model ---
-	async def 
+	async def _convert_results_to_output_model(
+		self,
+		results: List[ActionResult | AgentHistoryList],
+		output_model: type[T],
+	) -> T:
+		"""Convert workflow results to a specified output model.
+
+		Filters ActionResults with extracted_content, then uses LangChain to parse
+		all extracted texts into the structured output model.
+
+		Args:
+			results: List of workflow step results
+			output_model: Target Pydantic model class to convert to
+
+		Returns:
+			An instance of the specified output model
+		"""
+		if not results:
+			raise ValueError('No results to convert')
+
+		if self.llm is None:
+			raise ValueError('LLM is required for structured output conversion')
+
+		# Extract all content from ActionResults
+		extracted_contents = []
+
+		for result in results:
+			if isinstance(result, ActionResult) and result.extracted_content:
+				extracted_contents.append(result.extracted_content)
+			elif isinstance(result, AgentHistoryList):
+				# Check the agent history for any extracted content
+				for item in result.history:
+					for action_result in item.result:
+						if action_result.extracted_content:
+							extracted_contents.append(action_result.extracted_content)
+
+		if not extracted_contents:
+			raise ValueError('No extracted content found in workflow results')
+
+		# Combine all extracted contents
+		combined_text = '\n\n'.join(extracted_contents)
+
+		prompt = ChatPromptTemplate.from_messages(
+			[
+				(
+					'system',
+					STRUCTURED_OUTPUT_PROMPT.format(output_schema=output_model.model_json_schema()),
+				),
+				('user', f'Content to process:\n\n{combined_text}'),
+			]
+		)
+
+		chain = prompt | self.llm.with_structured_output(output_model)
+		chain_result: T = await chain.ainvoke({})  # type: ignore
+
+		return chain_result
 
 	async def run_step(self, step_index: int, inputs: dict[str, Any] | None = None):
 		"""Run a *single* workflow step asynchronously and return its result.
@@ -447,10 +509,19 @@ class Workflow:
 		close_browser_at_end: bool = True,
 		cancel_event: asyncio.Event | None = None,
 		output_model: type[T] | None = None,
-	) -> WorkflowRunOutput:
+	) -> WorkflowRunOutput[T]:
 		"""Execute the workflow asynchronously using step dictionaries.
 
 		@dev This is the main entry point for the workflow.
+
+		Args:
+			inputs: Optional dictionary of workflow inputs
+			close_browser_at_end: Whether to close the browser when done
+			cancel_event: Optional event to signal cancellation
+			output_model: Optional Pydantic model class to convert results to
+
+		Returns:
+			Either WorkflowRunOutput containing all step results or an instance of output_model if provided
 		"""
 		runtime_inputs = inputs or {}
 		# 1. Validate inputs against definition
@@ -485,8 +556,11 @@ class Workflow:
 				self._store_output(step_resolved, result)
 				logger.info(f'--- Finished Step {step_index + 1} ---\n')
 
+			# Convert results to output model if requested
+			output_model_result: T | None = None
 			if output_model:
-				results = [output_model(**result) for result in results]
+				output_model_result = await self._convert_results_to_output_model(results, output_model)
+
 		finally:
 			if close_browser_at_end:
 				# Ensure __aexit__ is called with appropriate args for exception handling if needed
@@ -499,7 +573,7 @@ class Workflow:
 		if close_browser_at_end:
 			await self.browser.close()
 
-		return WorkflowRunOutput(step_results=results)
+		return WorkflowRunOutput(step_results=results, output_model=output_model_result)
 
 	# ------------------------------------------------------------------
 	# LangChain tool wrapper

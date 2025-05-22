@@ -169,13 +169,13 @@ class WorkflowService:
 					'extracted_content': s.extracted_content,
 					'status': 'completed',
 				}
-				for i, s in enumerate(result)
+				for i, s in enumerate(result.step_results)
 			]
 			for step in formatted_result:
 				await self._write_log(log_file, f'[{ts}] Completed step {step["step_id"]}: {step["extracted_content"]}\n')
 
 			self.active_tasks[task_id].update({'status': 'completed', 'result': formatted_result})
-			await self._write_log(log_file, f'[{ts}] Workflow completed successfully with {len(result)} steps\n')
+			await self._write_log(log_file, f'[{ts}] Workflow completed successfully with {len(result.step_results)} steps\n')
 
 		except asyncio.CancelledError:
 			await self._write_log(log_file, f'[{time.strftime("%Y-%m-%d %H:%M:%S")}] Workflow force‑cancelled\n')
@@ -185,10 +185,11 @@ class WorkflowService:
 			await self._write_log(log_file, f'[{time.strftime("%Y-%m-%d %H:%M:%S")}] Error: {exc}\n')
 			self.active_tasks[task_id].update({'status': 'failed', 'error': str(exc)})
 
-	def get_task_status(self, task_id: str) -> Dict[str, Any]:
+	def get_task_status(self, task_id: str) -> Dict[str, Any] | None:
 		task_info = self.active_tasks.get(task_id)
 		if not task_info:
 			return None
+
 		return {
 			'task_id': task_id,
 			'status': task_info['status'],

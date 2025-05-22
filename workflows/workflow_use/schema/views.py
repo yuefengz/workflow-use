@@ -91,7 +91,7 @@ class ScrollStep(TimestampedWorkflowStep):
 class PageExtractionStep(TimestampedWorkflowStep):
 	"""Extracts text from the page using 'page_extraction' (maps to workflow controller's page_extraction)."""
 
-	type: Literal['page_extraction']  # Assumed type for workflow controller's page_extraction
+	type: Literal['extract_page_content']  # Assumed type for workflow controller's page_extraction
 	goal: str = Field(..., description='The goal of the page extraction.')
 
 
@@ -104,6 +104,7 @@ DeterministicWorkflowStep = Union[
 	SelectChangeStep,
 	KeyPressStep,
 	ScrollStep,
+	PageExtractionStep,
 ]
 
 AgenticWorkflowStep = AgentTaskWorkflowStep
