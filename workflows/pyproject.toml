@@ -45,7 +45,7 @@ indent-style = "tab"
 docstring-code-format = true
 
 [tool.pyright]
-typeCheckingMode = "off"
+typeCheckingMode = "basic"
 
 [build-system]
 requires = ["hatchling"]

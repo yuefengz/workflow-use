@@ -5,7 +5,7 @@ import json
 import json as _json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, TypeVar
 
 from browser_use.agent.service import Agent
 from browser_use.agent.views import ActionResult, AgentHistoryList
@@ -33,10 +33,13 @@ from workflow_use.schema.views import (
 	WorkflowStep,
 )
 from workflow_use.workflow.prompts import WORKFLOW_FALLBACK_PROMPT_TEMPLATE
+from workflow_use.workflow.views import WorkflowRunOutput
 
 logger = logging.getLogger(__name__)
 
 WAIT_FOR_ELEMENT_TIMEOUT = 2500
+
+T = TypeVar('T', bound=BaseModel)
 
 
 class Workflow:
@@ -142,7 +145,7 @@ class Workflow:
 
 		return result
 
-	async def _run_agent_step(self, step: AgenticWorkflowStep) -> AgentHistoryList | dict[str, Any]:
+	async def _run_agent_step(self, step: AgenticWorkflowStep) -> AgentHistoryList:
 		"""Spin-up an Agent based on step dictionary."""
 		if self.llm is None:
 			raise ValueError("An 'llm' instance must be supplied for agent-based steps")
@@ -164,7 +167,7 @@ class Workflow:
 		step_resolved: WorkflowStep,
 		step_index: int,
 		error: Exception | str | None = None,
-	) -> AgentHistoryList | dict[str, Any]:
+	) -> AgentHistoryList:
 		"""Handle step failure by delegating to an agent."""
 		if self.llm is None:
 			raise ValueError("Cannot fall back to agent: An 'llm' instance must be supplied")
@@ -345,10 +348,10 @@ class Workflow:
 
 		self.context[output_key] = value
 
-	async def _execute_step(self, step_index: int, step_resolved: WorkflowStep) -> Any:
+	async def _execute_step(self, step_index: int, step_resolved: WorkflowStep) -> ActionResult | AgentHistoryList:
 		"""Execute the resolved step dictionary, handling type branching and fallback."""
 		# Use 'type' field from the WorkflowStep dictionary
-		result: Any | None = None
+		result: ActionResult | AgentHistoryList
 
 		if isinstance(step_resolved, DeterministicWorkflowStep):
 			from browser_use.agent.views import ActionResult  # Local import ok
@@ -395,8 +398,11 @@ class Workflow:
 					raise ValueError(f'Agent step {step_index + 1} failed: {e}')
 
 		return result
+	
+	# --- Convert all extracted stuff to final output model ---
+	async def 
 
-	async def run_step(self, step_index: int, inputs: dict[str, Any] | None = None) -> Any:
+	async def run_step(self, step_index: int, inputs: dict[str, Any] | None = None):
 		"""Run a *single* workflow step asynchronously and return its result.
 
 		Parameters
@@ -436,8 +442,12 @@ class Workflow:
 		return result
 
 	async def run(
-		self, inputs: dict[str, Any] | None = None, close_browser_at_end: bool = True, cancel_event: asyncio.Event | None = None
-	) -> List[Any]:
+		self,
+		inputs: dict[str, Any] | None = None,
+		close_browser_at_end: bool = True,
+		cancel_event: asyncio.Event | None = None,
+		output_model: type[T] | None = None,
+	) -> WorkflowRunOutput:
 		"""Execute the workflow asynchronously using step dictionaries.
 
 		@dev This is the main entry point for the workflow.
@@ -448,7 +458,7 @@ class Workflow:
 		# 2. Initialize context with validated inputs
 		self.context = runtime_inputs.copy()  # Start with a fresh context
 
-		results: List[Any] = []
+		results: List[ActionResult | AgentHistoryList] = []
 
 		await self.browser_context.__aenter__()
 		try:
@@ -474,6 +484,9 @@ class Workflow:
 				# Persist outputs using the resolved step dictionary
 				self._store_output(step_resolved, result)
 				logger.info(f'--- Finished Step {step_index + 1} ---\n')
+
+			if output_model:
+				results = [output_model(**result) for result in results]
 		finally:
 			if close_browser_at_end:
 				# Ensure __aexit__ is called with appropriate args for exception handling if needed
@@ -486,7 +499,7 @@ class Workflow:
 		if close_browser_at_end:
 			await self.browser.close()
 
-		return results
+		return WorkflowRunOutput(step_results=results)
 
 	# ------------------------------------------------------------------
 	# LangChain tool wrapper
