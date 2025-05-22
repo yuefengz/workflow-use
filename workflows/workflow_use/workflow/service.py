@@ -18,6 +18,7 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, create_model
 
 from workflow_use.controller.service import WorkflowController
+from workflow_use.controller.utils import get_best_element_handle
 from workflow_use.schema.views import (
 	AgenticWorkflowStep,
 	ClickStep,
@@ -32,11 +33,11 @@ from workflow_use.schema.views import (
 	WorkflowStep,
 )
 from workflow_use.workflow.prompts import WORKFLOW_FALLBACK_PROMPT_TEMPLATE
-from workflow_use.controller.utils import get_best_element_handle
 
 logger = logging.getLogger(__name__)
 
 WAIT_FOR_ELEMENT_TIMEOUT = 2500
+
 
 class Workflow:
 	"""Simple orchestrator that executes a list of workflow *steps* defined in a WorkflowDefinitionSchema."""
@@ -48,6 +49,7 @@ class Workflow:
 		controller: WorkflowController | None = None,
 		browser: Browser | None = None,
 		llm: BaseChatModel | None = None,
+		page_extraction_llm: BaseChatModel | None = None,
 		fallback_to_agent: bool = True,
 	) -> None:
 		"""Initialize a new Workflow instance from a schema object.
@@ -72,10 +74,11 @@ class Workflow:
 		self.controller = controller or WorkflowController()
 		self.browser = browser or Browser()
 		self.llm = llm
+		self.page_extraction_llm = page_extraction_llm
+
 		self.fallback_to_agent = fallback_to_agent
 
 		self.browser_context = BrowserContext(browser=self.browser, config=self.browser.config.new_context_config)
-
 		self.context: dict[str, Any] = {}
 
 		self.inputs_def: List[WorkflowInputSchemaDefinition] = self.schema.input_schema
@@ -92,7 +95,7 @@ class Workflow:
 		llm: BaseChatModel | None = None,
 	) -> Workflow:
 		"""Load a workflow from a file."""
-		with open(file_path, 'r', encoding="utf-8") as f:
+		with open(file_path, 'r', encoding='utf-8') as f:
 			data = _json.load(f)
 		workflow_schema = WorkflowDefinitionSchema(**data)
 		return Workflow(workflow_schema=workflow_schema, controller=controller, browser=browser, llm=llm)
@@ -109,35 +112,33 @@ class Workflow:
 		action_model = ActionModel(**{action_name: params})
 
 		try:
-			result = await self.controller.act(action_model, self.browser_context)
+			result = await self.controller.act(action_model, self.browser_context, page_extraction_llm=self.page_extraction_llm)
 		except Exception as e:
 			raise RuntimeError(f"Deterministic action '{action_name}' failed: {str(e)}")
 
 		# Helper function to truncate long selectors in logs
 		def truncate_selector(selector: str) -> str:
-			return selector if len(selector) <= 45 else f"{selector[:45]}..."
+			return selector if len(selector) <= 45 else f'{selector[:45]}...'
+
 		# Determine if this is not the last step, and extract next step's cssSelector if available
 		current_index = step_index
 		if current_index < len(self.steps) - 1:
 			next_step = self.steps[current_index + 1]
 			next_step_resolved = self._resolve_placeholders(next_step)
-			css_selector = getattr(next_step_resolved, "cssSelector", None)
+			css_selector = getattr(next_step_resolved, 'cssSelector', None)
 			if css_selector:
 				try:
 					await self.browser_context._wait_for_stable_network()
 					page = await self.browser_context.get_agent_current_page()
-					
-					logger.info(f"Waiting for element with selector: {truncate_selector(css_selector)}")
+
+					logger.info(f'Waiting for element with selector: {truncate_selector(css_selector)}')
 					locator, selector_used = await get_best_element_handle(
-						page,
-						css_selector,
-						next_step_resolved,
-						timeout_ms=WAIT_FOR_ELEMENT_TIMEOUT
+						page, css_selector, next_step_resolved, timeout_ms=WAIT_FOR_ELEMENT_TIMEOUT
 					)
-					logger.info(f"Element with selector found: {truncate_selector(selector_used)}")
+					logger.info(f'Element with selector found: {truncate_selector(selector_used)}')
 				except Exception as e:
-					logger.error(f"Failed to wait for element with selector: {truncate_selector(css_selector)}. Error: {e}")
-					raise Exception(f"Failed to wait for element. Selector: {css_selector}") from e
+					logger.error(f'Failed to wait for element with selector: {truncate_selector(css_selector)}. Error: {e}')
+					raise Exception(f'Failed to wait for element. Selector: {css_selector}') from e
 
 		return result
 
@@ -171,24 +172,24 @@ class Workflow:
 		# Extract details from the failed step dictionary
 		failed_action_name = step_resolved.type
 		failed_params = step_resolved.model_dump()
-		step_description = step_resolved.description or "No description provided"
-		error_msg = str(error) if error else "Unknown error"
+		step_description = step_resolved.description or 'No description provided'
+		error_msg = str(error) if error else 'Unknown error'
 		total_steps = len(self.steps)
 		fail_details = (
 			f"step={step_index + 1}/{total_steps}, action='{failed_action_name}', "
 			f"description='{step_description}', params={str(failed_params)}, error='{error_msg}'"
 		)
-		
+
 		# Determine the failed_value based on step type and attributes
 		failed_value = None
-		description_prefix = f"Purpose: {step_description}. " if step_description else ""
-		
+		description_prefix = f'Purpose: {step_description}. ' if step_description else ''
+
 		if isinstance(step_resolved, NavigationStep):
-			failed_value = f"{description_prefix}Navigate to URL: {step_resolved.url}"
+			failed_value = f'{description_prefix}Navigate to URL: {step_resolved.url}'
 		elif isinstance(step_resolved, ClickStep):
 			# element_info = step_resolved.elementText or step_resolved.cssSelector
 			# failed_value = f"{description_prefix}Click element: {element_info}"
-			failed_value = f"Find and click element with description: {step_resolved.description}"
+			failed_value = f'Find and click element with description: {step_resolved.description}'
 		elif isinstance(step_resolved, InputStep):
 			failed_value = f"{description_prefix}Input text: '{step_resolved.value}' into element."
 		elif isinstance(step_resolved, SelectChangeStep):
@@ -196,20 +197,18 @@ class Workflow:
 		elif isinstance(step_resolved, KeyPressStep):
 			failed_value = f"{description_prefix}Press key: '{step_resolved.key}'"
 		elif isinstance(step_resolved, ScrollStep):
-			failed_value = f"{description_prefix}Scroll to position: (x={step_resolved.scrollX}, y={step_resolved.scrollY})"
+			failed_value = f'{description_prefix}Scroll to position: (x={step_resolved.scrollX}, y={step_resolved.scrollY})'
 		else:
 			failed_value = f"{description_prefix}No specific target value available for action '{failed_action_name}'"
-		
+
 		# Build workflow overview using the stored dictionaries
 		workflow_overview_lines: list[str] = []
 		for idx, step in enumerate(self.steps):
-			desc = step.description or ""
+			desc = step.description or ''
 			step_type_info = step.type
 			details = step.model_dump()
-			workflow_overview_lines.append(
-				f"  {idx + 1}. ({step_type_info}) {desc} - {details}"
-			)
-		workflow_overview = "\n".join(workflow_overview_lines)
+			workflow_overview_lines.append(f'  {idx + 1}. ({step_type_info}) {desc} - {details}')
+		workflow_overview = '\n'.join(workflow_overview_lines)
 		# print(workflow_overview)
 
 		# Build the fallback task with the failed_value
@@ -220,7 +219,7 @@ class Workflow:
 			action_type=failed_action_name,
 			fail_details=fail_details,
 			failed_value=failed_value,
-			step_description=step_description
+			step_description=step_description,
 		)
 		logger.info(f'Agent fallback task: {fallback_task}')
 
@@ -436,7 +435,9 @@ class Workflow:
 		# await self.browser.close() # <-- Commented out for testing
 		return result
 
-	async def run(self, inputs: dict[str, Any] | None = None, close_browser_at_end: bool = True, cancel_event: asyncio.Event | None = None) -> List[Any]:
+	async def run(
+		self, inputs: dict[str, Any] | None = None, close_browser_at_end: bool = True, cancel_event: asyncio.Event | None = None
+	) -> List[Any]:
 		"""Execute the workflow asynchronously using step dictionaries.
 
 		@dev This is the main entry point for the workflow.
@@ -457,7 +458,7 @@ class Workflow:
 
 				# Check if cancellation was requested
 				if cancel_event and cancel_event.is_set():
-					logger.info(f"Cancellation requested - stopping workflow execution")
+					logger.info('Cancellation requested - stopping workflow execution')
 					break
 
 				# Use description from the step dictionary
