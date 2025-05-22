@@ -13,6 +13,7 @@ from browser_use.browser.browser import Browser
 from browser_use.browser.context import BrowserContext
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, create_model
@@ -436,6 +437,7 @@ class Workflow:
 		for result in results:
 			if isinstance(result, ActionResult) and result.extracted_content:
 				extracted_contents.append(result.extracted_content)
+			# TODO: this might be incorrect; but it helps A LOT if extract fucks up and only the agent is able to solve it
 			elif isinstance(result, AgentHistoryList):
 				# Check the agent history for any extracted content
 				for item in result.history:
@@ -449,18 +451,13 @@ class Workflow:
 		# Combine all extracted contents
 		combined_text = '\n\n'.join(extracted_contents)
 
-		prompt = ChatPromptTemplate.from_messages(
-			[
-				(
-					'system',
-					STRUCTURED_OUTPUT_PROMPT.format(output_schema=output_model.model_json_schema()),
-				),
-				('user', f'Content to process:\n\n{combined_text}'),
-			]
-		)
+		messages: list[BaseMessage] = [
+			AIMessage(content=STRUCTURED_OUTPUT_PROMPT),
+			HumanMessage(content=combined_text),
+		]
 
-		chain = prompt | self.llm.with_structured_output(output_model)
-		chain_result: T = await chain.ainvoke({})  # type: ignore
+		chain = self.llm.with_structured_output(output_model)
+		chain_result: T = await chain.ainvoke(messages)  # type: ignore
 
 		return chain_result
 

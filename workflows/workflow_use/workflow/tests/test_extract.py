@@ -23,6 +23,7 @@ async def test_run_workflow():
 	path = Path(__file__).parent / 'tmp' / 'extract.workflow.json'
 
 	workflow = Workflow.load_from_file(path, llm=llm_instance, page_extraction_llm=page_extraction_llm)
+
 	result = await workflow.run({'api_key_name': 'test key'}, output_model=OutputModel)
 
 	assert result.output_model is not None

@@ -18,14 +18,7 @@ WORKFLOW_FALLBACK_PROMPT_TEMPLATE = (
 STRUCTURED_OUTPUT_PROMPT = """
 You are a data extraction expert. Your task is to extract structured information from the provided content.
 
-The content may contain various pieces of information from different sources. You need to analyze this content 
-and extract the relevant information according to the output schema provided below.
+The content may contain various pieces of information from different sources. You need to analyze this content and extract the relevant information according to the output schema provided below.
 
-Output Schema:
-{output_schema}
-
-Only extract information that is explicitly present in the content. If the required information is not available, 
-use reasonable default values or indicate that the information is missing.
-
-Be precise and follow the schema exactly.
+Only extract information that is explicitly present in the content. Be precise and follow the schema exactly.
 """
