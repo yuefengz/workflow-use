@@ -3,6 +3,14 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 
+# Task Models
+class TaskInfo(BaseModel):
+	status: str
+	workflow: str
+	result: Optional[List[Dict[str, Any]]] = None
+	error: Optional[str] = None
+
+
 # Request Models
 class WorkflowUpdateRequest(BaseModel):
 	filename: str

@@ -15,6 +15,7 @@ dependencies = [
     "aiofiles>=24.1.0",
     "browser-use>=0.1.46",
     "fastapi>=0.115.12",
+    "fastmcp>=2.3.4",
     "typer>=0.15.3",
     "uvicorn>=0.34.2",
 ]
@@ -43,9 +44,6 @@ unfixable = ["E101", "E402", "E501", "F841", "E731"]
 quote-style = "single"
 indent-style = "tab"
 docstring-code-format = true
-
-[tool.pyright]
-typeCheckingMode = "off"
 
 [build-system]
 requires = ["hatchling"]

@@ -39,15 +39,13 @@ async def get_workflow(name: str):
 @router.post('/update', response_model=WorkflowResponse)
 async def update_workflow(request: WorkflowUpdateRequest):
 	service = get_service()
-	result = service.update_workflow(request.dict())
-	return WorkflowResponse(**result)
+	return service.update_workflow(request)
 
 
 @router.post('/update-metadata', response_model=WorkflowResponse)
 async def update_workflow_metadata(request: WorkflowMetadataUpdateRequest):
 	service = get_service()
-	result = service.update_workflow_metadata(request.dict())
-	return WorkflowResponse(**result)
+	return service.update_workflow_metadata(request)
 
 
 @router.post('/execute', response_model=WorkflowExecuteResponse)
@@ -69,7 +67,7 @@ async def execute_workflow(request: WorkflowExecuteRequest):
 		service.cancel_events[task_id] = cancel_event
 		log_pos = await service._log_file_position()
 
-		task = asyncio.create_task(service.run_workflow_in_background(task_id, workflow_name, inputs, cancel_event))
+		task = asyncio.create_task(service.run_workflow_in_background(task_id, request, cancel_event))
 		service.workflow_tasks[task_id] = task
 		task.add_done_callback(
 			lambda _: (
@@ -97,9 +95,9 @@ async def get_logs(task_id: str, position: int = 0):
 		logs=logs,
 		position=new_pos,
 		log_position=new_pos,
-		status=task_info['status'] if task_info else 'unknown',
-		result=task_info.get('result') if task_info else None,
-		error=task_info.get('error') if task_info else None,
+		status=task_info.status if task_info else 'unknown',
+		result=task_info.result if task_info else None,
+		error=task_info.error if task_info else None,
 	)
 
 
@@ -109,13 +107,13 @@ async def get_task_status(task_id: str):
 	task_info = service.get_task_status(task_id)
 	if not task_info:
 		raise HTTPException(status_code=404, detail=f'Task {task_id} not found')
-	return WorkflowStatusResponse(**task_info)
+	return task_info
 
 
 @router.post('/tasks/{task_id}/cancel', response_model=WorkflowCancelResponse)
 async def cancel_workflow(task_id: str):
 	service = get_service()
 	result = await service.cancel_workflow(task_id)
-	if not result['success'] and result['message'] == 'Task not found':
+	if not result.success and result.message == 'Task not found':
 		raise HTTPException(status_code=404, detail=f'Task {task_id} not found')
-	return WorkflowCancelResponse(**result)
+	return result
