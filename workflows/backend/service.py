@@ -187,7 +187,7 @@ class WorkflowService:
 
 			self.active_tasks[task_id].status = 'completed'
 			self.active_tasks[task_id].result = formatted_result
-			await self._write_log(log_file, f'[{ts}] Workflow completed successfully with {len(result)} steps\n')
+			await self._write_log(log_file, f'[{ts}] Workflow completed successfully with {len(result.step_results)} steps\n')
 
 		except asyncio.CancelledError:
 			await self._write_log(log_file, f'[{time.strftime("%Y-%m-%d %H:%M:%S")}] Workflow force‑cancelled\n')
