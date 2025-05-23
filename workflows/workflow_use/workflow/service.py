@@ -74,6 +74,7 @@ class Workflow:
 		self.steps = self.schema.steps
 
 		self.controller = controller or WorkflowController()
+
 		self.browser = browser or Browser()
 
 		# Hack to not close it after agent kicks in
