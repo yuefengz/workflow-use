@@ -32,12 +32,14 @@ app = typer.Typer(
 llm_instance = None
 try:
 	llm_instance = ChatOpenAI(model='gpt-4o')
+	page_extraction_llm = ChatOpenAI(model='gpt-4o-mini')
 except Exception as e:
 	typer.secho(f'Error initializing LLM: {e}. Would you like to set your OPENAI_API_KEY?', fg=typer.colors.RED)
 	set_openai_api_key = input('Set OPENAI_API_KEY? (y/n): ')
 	if set_openai_api_key.lower() == 'y':
 		os.environ['OPENAI_API_KEY'] = input('Enter your OPENAI_API_KEY: ')
 		llm_instance = ChatOpenAI(model='gpt-4o')
+		page_extraction_llm = ChatOpenAI(model='gpt-4o-mini')
 
 builder_service = BuilderService(llm=llm_instance) if llm_instance else None
 # recorder_service = RecorderService() # Placeholder
@@ -151,7 +153,6 @@ def create_workflow():
 	"""
 	if not recording_service:
 		# Adjusted RecordingService initialization check assuming it doesn't need LLM
-		# If it does, this check should be more robust (e.g. based on llm_instance)
 		typer.secho(
 			'RecordingService not available. Cannot create workflow.',
 			fg=typer.colors.RED,
@@ -279,7 +280,7 @@ def run_as_tool_command(
 
 	try:
 		# Pass llm_instance to ensure the workflow can use it if needed for as_tool() or run_with_prompt()
-		workflow_obj = Workflow.load_from_file(str(workflow_path), llm=llm_instance)
+		workflow_obj = Workflow.load_from_file(str(workflow_path), llm=llm_instance, page_extraction_llm=page_extraction_llm)
 	except Exception as e:
 		typer.secho(f'Error loading workflow: {e}', fg=typer.colors.RED)
 		raise typer.Exit(code=1)
@@ -328,7 +329,11 @@ def run_workflow_command(
 		browser_instance = Browser()  # Add any necessary config if required
 		controller_instance = WorkflowController()  # Add any necessary config if required
 		workflow_obj = Workflow.load_from_file(
-			str(workflow_path), llm=llm_instance, browser=browser_instance, controller=controller_instance
+			str(workflow_path),
+			llm=llm_instance,
+			browser=browser_instance,
+			controller=controller_instance,
+			page_extraction_llm=page_extraction_llm,
 		)
 	except Exception as e:
 		typer.secho(f'Error loading workflow: {e}', fg=typer.colors.RED)
@@ -389,7 +394,7 @@ def run_workflow_command(
 		typer.secho('\nWorkflow execution completed!', fg=typer.colors.GREEN, bold=True)
 		typer.echo(typer.style('Result:', bold=True))
 		# Output the number of steps executed, similar to previous behavior
-		typer.echo(f'{typer.style(str(len(result)), bold=True)} steps executed.')
+		typer.echo(f'{typer.style(str(len(result.step_results)), bold=True)} steps executed.')
 		# For more detailed results, one might want to iterate through the 'result' list
 		# and print each item, or serialize the whole list to JSON.
 		# For now, sticking to the step count as per original output.
@@ -415,7 +420,9 @@ def mcp_server_command(
 	typer.echo()  # Add space
 
 	llm_instance = ChatOpenAI(model='gpt-4o')
-	mcp = get_mcp_server(llm_instance, workflow_dir='./tmp')
+	page_extraction_llm = ChatOpenAI(model='gpt-4o-mini')
+
+	mcp = get_mcp_server(llm_instance, page_extraction_llm=page_extraction_llm, workflow_dir='./tmp')
 
 	mcp.run(
 		transport='sse',
