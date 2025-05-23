@@ -13,7 +13,7 @@ classifiers = [
 
 dependencies = [
     "aiofiles>=24.1.0",
-    "browser-use>=0.1.46",
+    "browser-use @ git+https://github.com/browser-use/browser-use@main",
     "fastapi>=0.115.12",
     "fastmcp>=2.3.4",
     "typer>=0.15.3",
@@ -56,3 +56,6 @@ build-backend = "hatchling.build"
 include = [
     "workflow_use/**/*.py"
 ]
+
+[tool.hatch.metadata]
+allow-direct-references = true
