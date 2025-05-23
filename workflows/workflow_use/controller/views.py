@@ -13,8 +13,8 @@ class _BaseExtra(BaseModel):
 
 # Mixin for shared step metadata (timestamp and tab context)
 class StepMeta(_BaseExtra):
-    timestamp: int
-    tabId: int
+    timestamp: Optional[int] = None
+    tabId: Optional[int] = None
 
 
 # Common optional fields present in recorder events
@@ -72,3 +72,4 @@ class ScrollDeterministicAction(_BaseExtra):
     scrollX: int = 0
     scrollY: int = 0
     targetId: Optional[int] = None
+
