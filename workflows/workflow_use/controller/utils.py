@@ -6,6 +6,14 @@ logger = logging.getLogger(__name__)
 
 async def get_best_element_handle(page, selector, params=None, timeout_ms=500):
     """Find element using stability-ranked selector strategies."""
+    if params and getattr(params, "elementRole", None) and getattr(params, "elementText", None):
+        try:
+            locator = page.get_by_role(params.elementRole, name=params.elementText)
+            await locator.wait_for(state="visible", timeout=timeout_ms)
+            return locator, f"role={params.elementRole} and name={params.elementText}"
+        except Exception as e:
+            logger.warning(f"Failed to find element with role {params.elementRole} and name {params.elementText}: {e}")
+    
     original_selector = selector
 
     # Generate stability-ranked fallback selectors
@@ -22,9 +30,10 @@ async def get_best_element_handle(page, selector, params=None, timeout_ms=500):
             logger.info(f"Found element with selector: {try_selector}")
             return locator, try_selector
         except Exception as e:
-            logger.info(f"Selector failed: {try_selector} with error: {e}")
+            logger.warning(f"Selector failed: {try_selector} with error: {e}")
 
     # Try XPath as last resort
+    xpath_alternatives = []
     if params and getattr(params, "xpath", None):
         xpath = params.xpath
         # Generate stable XPath alternatives
@@ -38,10 +47,12 @@ async def get_best_element_handle(page, selector, params=None, timeout_ms=500):
                 await locator.wait_for(state="visible", timeout=timeout_ms)
                 return locator, xpath_selector
             except Exception as e:
-                logger.info(f"XPath failed: {try_xpath} with error: {e}")
-        logger.info(f"All XPaths failed with error: {e}")
+                logger.warning(f"XPath failed: {try_xpath} with error: {e}")
+        logger.warning(f"All XPaths failed with error: {e}")
 
-    raise Exception(f"Failed to find element. Original: {original_selector}")
+    raise Exception(f"Failed to find element. Original: {original_selector}. "
+                    f"Selectors tried: {" | ".join(selectors_to_try)}. "
+                    f"XPaths tried: {" | ".join(xpath_alternatives)}.")
 
 
 def generate_stable_selectors(selector, params=None):

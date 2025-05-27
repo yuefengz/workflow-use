@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 # --- Base Step Model ---
 # Common fields for all step types
 class BaseWorkflowStep(BaseModel):
-	description: Optional[str] = Field(None, description="Optional description/comment about the step's purpose.")
+	description: Optional[str] = Field(None, description="Description/comment about the step's purpose. This should clearly describe the goal, what should be done, what is the expected output, what should not be touched, etc.")
 	output: Optional[str] = Field(None, description='Context key to store step output under.')
 	# Allow other fields captured from raw events but not explicitly modeled
 	model_config = {'extra': 'allow'}
@@ -46,8 +46,9 @@ class ClickStep(TimestampedWorkflowStep):
 	type: Literal['click']  # As seen in examples
 	cssSelector: str = Field(..., description='CSS selector for the target element.')
 	xpath: Optional[str] = Field(None, description='XPath selector (often informational).')
-	elementTag: Optional[str] = Field(None, description='HTML tag (informational).')
-	elementText: Optional[str] = Field(None, description='Element text (informational).')
+	elementTag: Optional[str] = Field(None, description='HTML tag (informational), maybe used to locate the element via playwright\'s `page.locator("elementTag:has-text(elementText)")`')
+	elementText: str = Field(..., description='Element text (informational), maybe used to locate the element via playwright\'s `page.getByLabel(elementText)`')
+	elementRole: str = Field(..., description='ARIA role of the target element, maybe used to locate the element via playwright\'s `page.getByRole(elementRole, name=elementText)`')
 
 
 class InputStep(TimestampedWorkflowStep):
@@ -57,7 +58,9 @@ class InputStep(TimestampedWorkflowStep):
 	cssSelector: str = Field(..., description='CSS selector for the target input element.')
 	value: str = Field(..., description='Value to input. Can use {context_var}.')
 	xpath: Optional[str] = Field(None, description='XPath selector (informational).')
-	elementTag: Optional[str] = Field(None, description='HTML tag (informational).')
+	elementTag: Optional[str] = Field(None, description='HTML tag (informational), maybe used to locate the element via playwright\'s `page.locator("elementTag:has-text(elementText)")`')
+	elementText: str = Field(..., description='Element text (informational), maybe used to locate the element via playwright\'s `page.getByLabel(elementText)`')
+	elementRole: str = Field(..., description='ARIA role of the target element, maybe used to locate the element via playwright\'s `page.getByRole(elementRole, name=elementText)`')
 
 
 class SelectChangeStep(TimestampedWorkflowStep):
@@ -67,7 +70,9 @@ class SelectChangeStep(TimestampedWorkflowStep):
 	cssSelector: str = Field(..., description='CSS selector for the target select element.')
 	selectedText: str = Field(..., description='Visible text of the option to select. Can use {context_var}.')
 	xpath: Optional[str] = Field(None, description='XPath selector (informational).')
-	elementTag: Optional[str] = Field(None, description='HTML tag (informational).')
+	# elementTag: Optional[str] = Field(None, description='HTML tag (informational), maybe used to locate the element via playwright\'s `page.locator("elementTag:has-text(elementText)")`')
+	# elementText: Optional[str] = Field(None, description='Element text (informational), maybe used to locate the element via playwright\'s `page.getByLabel(elementText)`')
+	# elementRole: str = Field(..., description='ARIA role of the target element, maybe used to locate the element via playwright\'s `page.getByRole(elementRole, name=elementText)`')
 
 
 class KeyPressStep(TimestampedWorkflowStep):
@@ -77,7 +82,9 @@ class KeyPressStep(TimestampedWorkflowStep):
 	cssSelector: str = Field(..., description='CSS selector for the target element.')
 	key: str = Field(..., description="The key to press (e.g., 'Tab', 'Enter').")
 	xpath: Optional[str] = Field(None, description='XPath selector (informational).')
-	elementTag: Optional[str] = Field(None, description='HTML tag (informational).')
+	# elementTag: Optional[str] = Field(None, description='HTML tag (informational), maybe used to locate the element via playwright\'s `page.locator("elementTag:has-text(elementText)")`')
+	# elementText: Optional[str] = Field(None, description='Element text (informational), maybe used to locate the element via playwright\'s `page.getByLabel(elementText)`')
+	# elementRole: str = Field(..., description='ARIA role of the target element, maybe used to locate the element via playwright\'s `page.getByRole(elementRole, name=elementText)`')
 
 
 class ScrollStep(TimestampedWorkflowStep):
@@ -140,6 +147,7 @@ class WorkflowDefinitionSchema(BaseModel):
 
 	name: str = Field(..., description='The name of the workflow.')
 	description: str = Field(..., description='A human-readable description of the workflow.')
+	useful_details: str = Field(..., description='Useful details in markdown format about the pages in the workflow, e.g. what are the options for a filter, whether the dropdown filter is dynamic, etc.')
 	version: str = Field(..., description='The version identifier for this workflow definition.')
 	steps: List[WorkflowStep] = Field(
 		...,

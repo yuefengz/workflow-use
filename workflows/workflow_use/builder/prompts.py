@@ -12,7 +12,12 @@ Input Steps Format:
 
 Follow these rules when generating the output JSON:
 0. The first thing you will output is the "workflow_analysis". First analyze the original workflow recording, what it is about and create a general analysis of the workflow. Also think about which variables are going to be needed for the workflow.
-1. Top-level keys: "workflow_analysis", "name", "description", "input_schema", "steps" and "version".
+1. Capture important details about the pages in the workflow in the "useful_details" field. The details maybe include:
+   - What are the options for a filter;
+   - Whether a dropdown filter is dynamic;
+   - Mapping from dropdown options to their html elements;
+   - And so on.
+2. Top-level keys: "workflow_analysis", "name", "description", "useful_details", "input_schema", "steps" and "version".
    - "input_schema" - MUST follow JSON-Schema draft-7 subset semantics:
        [
          {{"name": "foo", "type": "string", "required": true}}, 

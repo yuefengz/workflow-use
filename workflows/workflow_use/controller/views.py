@@ -22,6 +22,7 @@ class RecorderBase(StepMeta):
     xpath: Optional[str] = None
     elementTag: Optional[str] = None
     elementText: Optional[str] = None
+    elementRole: Optional[str] = None
     frameUrl: Optional[str] = None
     screenshot: Optional[str] = None
 

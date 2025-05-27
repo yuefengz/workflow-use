@@ -11,6 +11,7 @@ from browser_use.agent.service import Agent
 from browser_use.agent.views import ActionResult, AgentHistoryList
 from browser_use.browser.browser import Browser
 from browser_use.browser.context import BrowserContext
+from browser_use.controller.service import Controller
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
@@ -31,7 +32,7 @@ from workflow_use.schema.views import (
 	WorkflowInputSchemaDefinition,
 	WorkflowStep,
 )
-from workflow_use.workflow.prompts import WORKFLOW_FALLBACK_PROMPT_TEMPLATE
+from workflow_use.workflow.prompts import WORKFLOW_FALLBACK_PROMPT_TEMPLATE, AGENTIC_STEP_PROMPT_TEMPLATE
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,7 @@ class Workflow:
 		browser: Browser | None = None,
 		llm: BaseChatModel | None = None,
 		fallback_to_agent: bool = True,
+		fallback_controller: Controller | None = None,
 	) -> None:
 		"""Initialize a new Workflow instance from a schema object.
 
@@ -68,6 +70,7 @@ class Workflow:
 		self.steps = self.schema.steps
 
 		self.controller = controller or WorkflowController()
+		self.fallback_controller = fallback_controller or Controller()
 		self.browser = browser or Browser()
 		self.llm = llm
 		self.fallback_to_agent = fallback_to_agent
@@ -78,6 +81,7 @@ class Workflow:
 
 		self.inputs_def: List[WorkflowInputSchemaDefinition] = self.schema.input_schema
 		self._input_model: type[BaseModel] = self._build_input_model()
+		self.failure_details: dict[int, str] = {}  # step_index -> failure_details
 
 	# --- Loaders ---
 	@classmethod
@@ -124,9 +128,27 @@ class Workflow:
 			llm=self.llm,
 			browser=self.browser,
 			browser_context=self.browser_context,
+			controller=self.fallback_controller,
 			use_vision=True,  # Consider making this configurable via WorkflowStep schema
 		)
 		return await agent.run(max_steps=max_steps)
+
+	def _get_workflow_overview(self, highlight_index: int | None = None) -> str:
+		"""Get a string representation of the workflow."""
+		workflow_overview_lines: list[str] = []
+		for idx, step in enumerate(self.steps):
+			desc = step.description or ""
+			step_type_info = step.type
+			details = step.model_dump()
+			if highlight_index is not None and idx == highlight_index:
+				workflow_overview_lines.append(
+					f"  ** {idx + 1}. ({step_type_info}) {desc} ** - {details}"
+				)
+			else:
+				workflow_overview_lines.append(
+					f"  {idx + 1}. ({step_type_info}) {desc} - {details}"
+				)
+		return "\n".join(workflow_overview_lines)
 
 	async def _fallback_to_agent(
 		self,
@@ -148,38 +170,31 @@ class Workflow:
 			f"step={step_index + 1}/{total_steps}, action='{failed_action_name}', "
 			f"description='{step_description}', params={str(failed_params)}, error='{error_msg}'"
 		)
+		self.failure_details[step_index] = fail_details
 		
 		# Determine the failed_value based on step type and attributes
 		failed_value = None
-		description_prefix = f"Purpose: {step_description}. " if step_description else ""
+		description_suffix = f"The purpose of this step is: {step_description}. " if step_description and step_description !="No description provided" else ""
 		
 		if isinstance(step_resolved, NavigationStep):
-			failed_value = f"{description_prefix}Navigate to URL: {step_resolved.url}"
+			failed_value = f"Navigate to URL: {step_resolved.url}. {description_suffix}"
 		elif isinstance(step_resolved, ClickStep):
 			# element_info = step_resolved.elementText or step_resolved.cssSelector
 			# failed_value = f"{description_prefix}Click element: {element_info}"
 			failed_value = f"Find and click element with description: {step_resolved.description}"
 		elif isinstance(step_resolved, InputStep):
-			failed_value = f"{description_prefix}Input text: '{step_resolved.value}' into element."
+			failed_value = f"Input text: '{step_resolved.value}' into element. {description_suffix}"
 		elif isinstance(step_resolved, SelectChangeStep):
-			failed_value = f"{description_prefix}Select option: '{step_resolved.selectedText}' in dropdown."
+			failed_value = f"Select option: '{step_resolved.selectedText}' in dropdown. {description_suffix}"
 		elif isinstance(step_resolved, KeyPressStep):
-			failed_value = f"{description_prefix}Press key: '{step_resolved.key}'"
+			failed_value = f"Press key: '{step_resolved.key}'. {description_suffix}"
 		elif isinstance(step_resolved, ScrollStep):
-			failed_value = f"{description_prefix}Scroll to position: (x={step_resolved.scrollX}, y={step_resolved.scrollY})"
+			failed_value = f"Scroll to position: (x={step_resolved.scrollX}, y={step_resolved.scrollY}). {description_suffix}"
 		else:
-			failed_value = f"{description_prefix}No specific target value available for action '{failed_action_name}'"
+			failed_value = f"No specific target value available for action '{failed_action_name}'. {description_suffix}"
 		
 		# Build workflow overview using the stored dictionaries
-		workflow_overview_lines: list[str] = []
-		for idx, step in enumerate(self.steps):
-			desc = step.description or ""
-			step_type_info = step.type
-			details = step.model_dump()
-			workflow_overview_lines.append(
-				f"  {idx + 1}. ({step_type_info}) {desc} - {details}"
-			)
-		workflow_overview = "\n".join(workflow_overview_lines)
+		workflow_overview = self._get_workflow_overview(highlight_index=step_index)
 		print(workflow_overview)
 
 		# Build the fallback task with the failed_value
@@ -347,6 +362,12 @@ class Workflow:
 			# Use task key from step dictionary
 			task_description = step_resolved.task
 			logger.info(f'Running agent task: {task_description}')
+			task_prompt = AGENTIC_STEP_PROMPT_TEMPLATE.format(
+				task=task_description,
+				workflow_details=self._get_workflow_overview(highlight_index=step_index),
+				step_index=step_index + 1,
+				total_steps=len(self.steps))
+			step_resolved.task = task_prompt
 			result = await self._run_agent_step(step_resolved)
 
 		return result
