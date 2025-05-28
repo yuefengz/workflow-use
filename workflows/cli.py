@@ -1,16 +1,21 @@
 import asyncio
 import json
+import os
+import subprocess
 import tempfile  # For temporary file handling
+import webbrowser
 from pathlib import Path
 
 import typer
-from browser_use.browser.browser import Browser
+from browser_use import Browser
 
 # Assuming OPENAI_API_KEY is set in the environment
 from langchain_openai import ChatOpenAI
+from patchright.async_api import async_playwright as patchright_async_playwright
 
 from workflow_use.builder.service import BuilderService
 from workflow_use.controller.service import WorkflowController
+from workflow_use.mcp.service import get_mcp_server
 from workflow_use.recorder.service import RecordingService  # Added import
 from workflow_use.workflow.service import Workflow
 
@@ -24,13 +29,18 @@ app = typer.Typer(
 	no_args_is_help=True,
 )
 
-# Instantiate services (assuming OPENAI_API_KEY is set in environment)
+# Default LLM instance to None
+llm_instance = None
 try:
 	llm_instance = ChatOpenAI(model='gpt-4o')
+	page_extraction_llm = ChatOpenAI(model='gpt-4o-mini')
 except Exception as e:
-	typer.secho(f'Error initializing LLM: {e}. Ensure OPENAI_API_KEY is set.', fg=typer.colors.RED)
-	# Potentially exit or provide a way to configure API key
-	llm_instance = None
+	typer.secho(f'Error initializing LLM: {e}. Would you like to set your OPENAI_API_KEY?', fg=typer.colors.RED)
+	set_openai_api_key = input('Set OPENAI_API_KEY? (y/n): ')
+	if set_openai_api_key.lower() == 'y':
+		os.environ['OPENAI_API_KEY'] = input('Enter your OPENAI_API_KEY: ')
+		llm_instance = ChatOpenAI(model='gpt-4o')
+		page_extraction_llm = ChatOpenAI(model='gpt-4o-mini')
 
 builder_service = BuilderService(llm=llm_instance) if llm_instance else None
 # recorder_service = RecorderService() # Placeholder
@@ -116,9 +126,9 @@ def _build_and_save_workflow_from_recording(
 		typer.style('Enter a name for the generated workflow file', bold=True) + ' (e.g., my_search.workflow.json):',
 		default=default_workflow_filename,
 	)
-		# Ensure the file name ends with .json
+	# Ensure the file name ends with .json
 	if not workflow_output_name.endswith('.json'):
-		workflow_output_name = f"{workflow_output_name}.json"
+		workflow_output_name = f'{workflow_output_name}.json'
 	final_workflow_path = output_dir / workflow_output_name
 
 	try:
@@ -144,7 +154,6 @@ def create_workflow():
 	"""
 	if not recording_service:
 		# Adjusted RecordingService initialization check assuming it doesn't need LLM
-		# If it does, this check should be more robust (e.g. based on llm_instance)
 		typer.secho(
 			'RecordingService not available. Cannot create workflow.',
 			fg=typer.colors.RED,
@@ -272,7 +281,7 @@ def run_as_tool_command(
 
 	try:
 		# Pass llm_instance to ensure the workflow can use it if needed for as_tool() or run_with_prompt()
-		workflow_obj = Workflow.load_from_file(str(workflow_path), llm=llm_instance)
+		workflow_obj = Workflow.load_from_file(str(workflow_path), llm=llm_instance, page_extraction_llm=page_extraction_llm)
 	except Exception as e:
 		typer.secho(f'Error loading workflow: {e}', fg=typer.colors.RED)
 		raise typer.Exit(code=1)
@@ -310,86 +319,148 @@ def run_workflow_command(
 	"""
 	Loads and executes a workflow, prompting the user for required inputs.
 	"""
-	typer.echo(
-		typer.style(f'Loading workflow from: {typer.style(str(workflow_path.resolve()), fg=typer.colors.MAGENTA)}', bold=True)
-	)
-	typer.echo()  # Add space
 
-	try:
-		# Instantiate Browser and WorkflowController for the Workflow instance
-		# Pass llm_instance for potential agent fallbacks or agentic steps
-		browser_instance = Browser()  # Add any necessary config if required
-		controller_instance = WorkflowController()  # Add any necessary config if required
-		workflow_obj = Workflow.load_from_file(
-			str(workflow_path), llm=llm_instance, browser=browser_instance, controller=controller_instance
+	async def _run_workflow():
+		typer.echo(
+			typer.style(f'Loading workflow from: {typer.style(str(workflow_path.resolve()), fg=typer.colors.MAGENTA)}', bold=True)
 		)
-	except Exception as e:
-		typer.secho(f'Error loading workflow: {e}', fg=typer.colors.RED)
-		raise typer.Exit(code=1)
-
-	typer.secho('Workflow loaded successfully.', fg=typer.colors.GREEN, bold=True)
-
-	inputs = {}
-	input_definitions = workflow_obj.inputs_def  # Access inputs_def from the Workflow instance
-
-	if input_definitions:  # Check if the list is not empty
-		typer.echo()  # Add space
-		typer.echo(typer.style('Provide values for the following workflow inputs:', bold=True))
 		typer.echo()  # Add space
 
-		for input_def in input_definitions:
-			var_name_styled = typer.style(input_def.name, fg=typer.colors.CYAN, bold=True)
-			prompt_question = typer.style(f'Enter value for {var_name_styled}', bold=True)
+		try:
+			# Instantiate Browser and WorkflowController for the Workflow instance
+			# Pass llm_instance for potential agent fallbacks or agentic steps
+			playwright = await patchright_async_playwright().start()
 
-			var_type = input_def.type.lower()  # type is a direct attribute
-			is_required = input_def.required
+			browser = Browser(playwright=playwright)
+			controller_instance = WorkflowController()  # Add any necessary config if required
+			workflow_obj = Workflow.load_from_file(
+				str(workflow_path),
+				browser=browser,
+				llm=llm_instance,
+				controller=controller_instance,
+				page_extraction_llm=page_extraction_llm,
+			)
+		except Exception as e:
+			typer.secho(f'Error loading workflow: {e}', fg=typer.colors.RED)
+			raise typer.Exit(code=1)
 
-			type_info_str = f'type: {var_type}'
-			if is_required:
-				status_str = typer.style('required', fg=typer.colors.RED)
-			else:
-				status_str = typer.style('optional', fg=typer.colors.YELLOW)
+		typer.secho('Workflow loaded successfully.', fg=typer.colors.GREEN, bold=True)
 
-			full_prompt_text = f'{prompt_question} ({status_str}, {type_info_str})'
+		inputs = {}
+		input_definitions = workflow_obj.inputs_def  # Access inputs_def from the Workflow instance
 
-			input_val = None
-			if var_type == 'bool':
-				input_val = typer.confirm(full_prompt_text)
-			elif var_type == 'number':
-				input_val = typer.prompt(full_prompt_text, type=float)
-			elif var_type == 'string':  # Default to string for other unknown types as well
-				input_val = typer.prompt(full_prompt_text, type=str)
-			else:  # Should ideally not happen if schema is validated, but good to have a fallback
-				typer.secho(
-					f"Warning: Unknown type '{var_type}' for variable '{input_def.name}'. Treating as string.",
-					fg=typer.colors.YELLOW,
-				)
-				input_val = typer.prompt(full_prompt_text, type=str)
+		if input_definitions:  # Check if the list is not empty
+			typer.echo()  # Add space
+			typer.echo(typer.style('Provide values for the following workflow inputs:', bold=True))
+			typer.echo()  # Add space
 
-			inputs[input_def.name] = input_val
-			typer.echo()  # Add space after each prompt
-	else:
-		typer.echo('No input schema found in the workflow, or no properties defined. Proceeding without inputs.')
+			for input_def in input_definitions:
+				var_name_styled = typer.style(input_def.name, fg=typer.colors.CYAN, bold=True)
+				prompt_question = typer.style(f'Enter value for {var_name_styled}', bold=True)
 
+				var_type = input_def.type.lower()  # type is a direct attribute
+				is_required = input_def.required
+
+				type_info_str = f'type: {var_type}'
+				if is_required:
+					status_str = typer.style('required', fg=typer.colors.RED)
+				else:
+					status_str = typer.style('optional', fg=typer.colors.YELLOW)
+
+				full_prompt_text = f'{prompt_question} ({status_str}, {type_info_str})'
+
+				input_val = None
+				if var_type == 'bool':
+					input_val = typer.confirm(full_prompt_text)
+				elif var_type == 'number':
+					input_val = typer.prompt(full_prompt_text, type=float)
+				elif var_type == 'string':  # Default to string for other unknown types as well
+					input_val = typer.prompt(full_prompt_text, type=str)
+				else:  # Should ideally not happen if schema is validated, but good to have a fallback
+					typer.secho(
+						f"Warning: Unknown type '{var_type}' for variable '{input_def.name}'. Treating as string.",
+						fg=typer.colors.YELLOW,
+					)
+					input_val = typer.prompt(full_prompt_text, type=str)
+
+				inputs[input_def.name] = input_val
+				typer.echo()  # Add space after each prompt
+		else:
+			typer.echo('No input schema found in the workflow, or no properties defined. Proceeding without inputs.')
+
+		typer.echo()  # Add space
+		typer.echo(typer.style('Running workflow...', bold=True))
+
+		try:
+			# Call run on the Workflow instance
+			# close_browser_at_end=True is the default for Workflow.run, but explicit for clarity
+			result = await workflow_obj.run(inputs=inputs, close_browser_at_end=True)
+
+			typer.secho('\nWorkflow execution completed!', fg=typer.colors.GREEN, bold=True)
+			typer.echo(typer.style('Result:', bold=True))
+			# Output the number of steps executed, similar to previous behavior
+			typer.echo(f'{typer.style(str(len(result.step_results)), bold=True)} steps executed.')
+			# For more detailed results, one might want to iterate through the 'result' list
+			# and print each item, or serialize the whole list to JSON.
+			# For now, sticking to the step count as per original output.
+
+		except Exception as e:
+			typer.secho(f'Error running workflow: {e}', fg=typer.colors.RED)
+			raise typer.Exit(code=1)
+
+	return asyncio.run(_run_workflow())
+
+
+@app.command(name='mcp-server', help='Starts the MCP server which expose all the created workflows as tools.')
+def mcp_server_command(
+	port: int = typer.Option(
+		8008,
+		'--port',
+		'-p',
+		help='Port to run the MCP server on.',
+	),
+):
+	"""
+	Starts the MCP server which expose all the created workflows as tools.
+	"""
+	typer.echo(typer.style('Starting MCP server...', bold=True))
 	typer.echo()  # Add space
-	typer.echo(typer.style('Running workflow...', bold=True))
 
+	llm_instance = ChatOpenAI(model='gpt-4o')
+	page_extraction_llm = ChatOpenAI(model='gpt-4o-mini')
+
+	mcp = get_mcp_server(llm_instance, page_extraction_llm=page_extraction_llm, workflow_dir='./tmp')
+
+	mcp.run(
+		transport='sse',
+		host='0.0.0.0',
+		port=port,
+	)
+
+
+@app.command('launch-gui', help='Launch the workflow visualizer GUI.')
+def launch_gui():
+	"""Launch the workflow visualizer GUI."""
+	typer.echo(typer.style('Launching workflow visualizer GUI...', bold=True))
+
+	logs_dir = Path('./tmp/logs')
+	logs_dir.mkdir(parents=True, exist_ok=True)
+	backend_log = open(logs_dir / 'backend.log', 'w')
+	frontend_log = open(logs_dir / 'frontend.log', 'w')
+
+	backend = subprocess.Popen(['uvicorn', 'backend.api:app', '--reload'], stdout=backend_log, stderr=subprocess.STDOUT)
+	typer.echo(typer.style('Starting frontend...', bold=True))
+	frontend = subprocess.Popen(['npm', 'run', 'dev'], cwd='../ui', stdout=frontend_log, stderr=subprocess.STDOUT)
+	typer.echo(typer.style('Opening browser...', bold=True))
+	webbrowser.open('http://localhost:5173')
 	try:
-		# Call run on the Workflow instance
-		# close_browser_at_end=True is the default for Workflow.run, but explicit for clarity
-		result = asyncio.run(workflow_obj.run(inputs=inputs, close_browser_at_end=True))
-
-		typer.secho('\nWorkflow execution completed!', fg=typer.colors.GREEN, bold=True)
-		typer.echo(typer.style('Result:', bold=True))
-		# Output the number of steps executed, similar to previous behavior
-		typer.echo(f'{typer.style(str(len(result)), bold=True)} steps executed.')
-		# For more detailed results, one might want to iterate through the 'result' list
-		# and print each item, or serialize the whole list to JSON.
-		# For now, sticking to the step count as per original output.
-
-	except Exception as e:
-		typer.secho(f'Error running workflow: {e}', fg=typer.colors.RED)
-		raise typer.Exit(code=1)
+		typer.echo(typer.style('Press Ctrl+C to stop the GUI and servers.', fg=typer.colors.YELLOW, bold=True))
+		backend.wait()
+		frontend.wait()
+	except KeyboardInterrupt:
+		typer.echo(typer.style('\nShutting down servers...', fg=typer.colors.RED, bold=True))
+		backend.terminate()
+		frontend.terminate()
 
 
 if __name__ == '__main__':

@@ -5,20 +5,19 @@ import json
 import json as _json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, TypeVar
 
-from browser_use.agent.service import Agent
+from browser_use import Agent, Browser, Controller
 from browser_use.agent.views import ActionResult, AgentHistoryList
-from browser_use.browser.browser import Browser
-from browser_use.browser.context import BrowserContext
-from browser_use.controller.service import Controller
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, create_model
 
 from workflow_use.controller.service import WorkflowController
+from workflow_use.controller.utils import get_best_element_handle
 from workflow_use.schema.views import (
 	AgenticWorkflowStep,
 	ClickStep,
@@ -32,9 +31,14 @@ from workflow_use.schema.views import (
 	WorkflowInputSchemaDefinition,
 	WorkflowStep,
 )
-from workflow_use.workflow.prompts import WORKFLOW_FALLBACK_PROMPT_TEMPLATE, AGENTIC_STEP_PROMPT_TEMPLATE
+from workflow_use.workflow.prompts import STRUCTURED_OUTPUT_PROMPT, WORKFLOW_FALLBACK_PROMPT_TEMPLATE, AGENTIC_STEP_PROMPT_TEMPLATE
+from workflow_use.workflow.views import WorkflowRunOutput
 
 logger = logging.getLogger(__name__)
+
+WAIT_FOR_ELEMENT_TIMEOUT = 2500
+
+T = TypeVar('T', bound=BaseModel)
 
 
 class Workflow:
@@ -47,6 +51,7 @@ class Workflow:
 		controller: WorkflowController | None = None,
 		browser: Browser | None = None,
 		llm: BaseChatModel | None = None,
+		page_extraction_llm: BaseChatModel | None = None,
 		fallback_to_agent: bool = True,
 		fallback_controller: Controller | None = None,
 	) -> None:
@@ -71,11 +76,16 @@ class Workflow:
 
 		self.controller = controller or WorkflowController()
 		self.fallback_controller = fallback_controller or Controller()
-		self.browser = browser or Browser()
-		self.llm = llm
-		self.fallback_to_agent = fallback_to_agent
 
-		self.browser_context = BrowserContext(browser=self.browser, config=self.browser.config.new_context_config)
+		self.browser = browser or Browser()
+
+		# Hack to not close it after agent kicks in
+		self.browser.browser_profile.keep_alive = True
+
+		self.llm = llm
+		self.page_extraction_llm = page_extraction_llm
+
+		self.fallback_to_agent = fallback_to_agent
 
 		self.context: dict[str, Any] = {}
 
@@ -92,15 +102,22 @@ class Workflow:
 		controller: WorkflowController | None = None,
 		browser: Browser | None = None,
 		llm: BaseChatModel | None = None,
+		page_extraction_llm: BaseChatModel | None = None,
 	) -> Workflow:
 		"""Load a workflow from a file."""
-		with open(file_path, 'r') as f:
+		with open(file_path, 'r', encoding='utf-8') as f:
 			data = _json.load(f)
 		workflow_schema = WorkflowDefinitionSchema(**data)
-		return Workflow(workflow_schema=workflow_schema, controller=controller, browser=browser, llm=llm)
+		return Workflow(
+			workflow_schema=workflow_schema,
+			controller=controller,
+			browser=browser,
+			llm=llm,
+			page_extraction_llm=page_extraction_llm,
+		)
 
 	# --- Runners ---
-	async def _run_deterministic_step(self, step: DeterministicWorkflowStep) -> ActionResult:
+	async def _run_deterministic_step(self, step: DeterministicWorkflowStep, step_index: int) -> ActionResult:
 		"""Execute a deterministic (controller) action based on step dictionary."""
 		# Assumes WorkflowStep for deterministic type has 'action' and 'params' keys
 		action_name: str = step.type  # Expect 'action' key for deterministic steps
@@ -111,11 +128,37 @@ class Workflow:
 		action_model = ActionModel(**{action_name: params})
 
 		try:
-			return await self.controller.act(action_model, self.browser_context)
+			result = await self.controller.act(action_model, self.browser, page_extraction_llm=self.page_extraction_llm)
 		except Exception as e:
 			raise RuntimeError(f"Deterministic action '{action_name}' failed: {str(e)}")
 
-	async def _run_agent_step(self, step: AgenticWorkflowStep) -> AgentHistoryList | dict[str, Any]:
+		# Helper function to truncate long selectors in logs
+		def truncate_selector(selector: str) -> str:
+			return selector if len(selector) <= 45 else f'{selector[:45]}...'
+
+		# Determine if this is not the last step, and extract next step's cssSelector if available
+		current_index = step_index
+		if current_index < len(self.steps) - 1:
+			next_step = self.steps[current_index + 1]
+			next_step_resolved = self._resolve_placeholders(next_step)
+			css_selector = getattr(next_step_resolved, 'cssSelector', None)
+			if css_selector:
+				try:
+					await self.browser._wait_for_stable_network()
+					page = await self.browser.get_current_page()
+
+					logger.info(f'Waiting for element with selector: {truncate_selector(css_selector)}')
+					locator, selector_used = await get_best_element_handle(
+						page, css_selector, next_step_resolved, timeout_ms=WAIT_FOR_ELEMENT_TIMEOUT
+					)
+					logger.info(f'Element with selector found: {truncate_selector(selector_used)}')
+				except Exception as e:
+					logger.error(f'Failed to wait for element with selector: {truncate_selector(css_selector)}. Error: {e}')
+					raise Exception(f'Failed to wait for element. Selector: {css_selector}') from e
+
+		return result
+
+	async def _run_agent_step(self, step: AgenticWorkflowStep) -> AgentHistoryList:
 		"""Spin-up an Agent based on step dictionary."""
 		if self.llm is None:
 			raise ValueError("An 'llm' instance must be supplied for agent-based steps")
@@ -126,9 +169,8 @@ class Workflow:
 		agent = Agent(
 			task=task,
 			llm=self.llm,
-			browser=self.browser,
-			browser_context=self.browser_context,
 			controller=self.fallback_controller,
+			browser_session=self.browser,
 			use_vision=True,  # Consider making this configurable via WorkflowStep schema
 		)
 		return await agent.run(max_steps=max_steps)
@@ -155,16 +197,16 @@ class Workflow:
 		step_resolved: WorkflowStep,
 		step_index: int,
 		error: Exception | str | None = None,
-	) -> AgentHistoryList | dict[str, Any]:
+	) -> AgentHistoryList:
 		"""Handle step failure by delegating to an agent."""
 		if self.llm is None:
 			raise ValueError("Cannot fall back to agent: An 'llm' instance must be supplied")
-		print('Workflow steps:', step_resolved)
+		# print('Workflow steps:', step_resolved)
 		# Extract details from the failed step dictionary
 		failed_action_name = step_resolved.type
 		failed_params = step_resolved.model_dump()
-		step_description = step_resolved.description or "No description provided"
-		error_msg = str(error) if error else "Unknown error"
+		step_description = step_resolved.description or 'No description provided'
+		error_msg = str(error) if error else 'Unknown error'
 		total_steps = len(self.steps)
 		fail_details = (
 			f"step={step_index + 1}/{total_steps}, action='{failed_action_name}', "
@@ -181,7 +223,7 @@ class Workflow:
 		elif isinstance(step_resolved, ClickStep):
 			# element_info = step_resolved.elementText or step_resolved.cssSelector
 			# failed_value = f"{description_prefix}Click element: {element_info}"
-			failed_value = f"Find and click element with description: {step_resolved.description}"
+			failed_value = f'Find and click element with description: {step_resolved.description}'
 		elif isinstance(step_resolved, InputStep):
 			failed_value = f"Input text: '{step_resolved.value}' into element. {description_suffix}"
 		elif isinstance(step_resolved, SelectChangeStep):
@@ -205,7 +247,7 @@ class Workflow:
 			action_type=failed_action_name,
 			fail_details=fail_details,
 			failed_value=failed_value,
-			step_description=step_description
+			step_description=step_description,
 		)
 		logger.info(f'Agent fallback task: {fallback_task}')
 
@@ -331,10 +373,10 @@ class Workflow:
 
 		self.context[output_key] = value
 
-	async def _execute_step(self, step_index: int, step_resolved: WorkflowStep) -> Any:
+	async def _execute_step(self, step_index: int, step_resolved: WorkflowStep) -> ActionResult | AgentHistoryList:
 		"""Execute the resolved step dictionary, handling type branching and fallback."""
 		# Use 'type' field from the WorkflowStep dictionary
-		result: Any | None = None
+		result: ActionResult | AgentHistoryList
 
 		if isinstance(step_resolved, DeterministicWorkflowStep):
 			from browser_use.agent.views import ActionResult  # Local import ok
@@ -343,7 +385,7 @@ class Workflow:
 				# Use action key from step dictionary
 				action_name = step_resolved.type or '[No action specified]'
 				logger.info(f'Attempting deterministic action: {action_name}')
-				result = await self._run_deterministic_step(step_resolved)
+				result = await self._run_deterministic_step(step_resolved, step_index)
 				if isinstance(result, ActionResult) and result.error:
 					logger.warning(f'Deterministic action reported error: {result.error}')
 					raise ValueError(f'Deterministic action {action_name} failed: {result.error}')
@@ -356,23 +398,93 @@ class Workflow:
 					raise ValueError('Cannot fall back to agent: LLM instance required.')
 				if self.fallback_to_agent:
 					result = await self._fallback_to_agent(step_resolved, step_index, e)
+					if not result.is_successful():
+						raise ValueError(f'Deterministic step {step_index + 1} ({action_name}) failed even after fallback')
 				else:
 					raise ValueError(f'Deterministic step {step_index + 1} ({action_name}) failed: {e}')
 		elif isinstance(step_resolved, AgenticWorkflowStep):
 			# Use task key from step dictionary
 			task_description = step_resolved.task
 			logger.info(f'Running agent task: {task_description}')
-			task_prompt = AGENTIC_STEP_PROMPT_TEMPLATE.format(
-				task=task_description,
-				workflow_details=self._get_workflow_overview(highlight_index=step_index),
-				step_index=step_index + 1,
-				total_steps=len(self.steps))
-			step_resolved.task = task_prompt
-			result = await self._run_agent_step(step_resolved)
+			try:
+				task_prompt = AGENTIC_STEP_PROMPT_TEMPLATE.format(
+					task=task_description,
+					workflow_details=self._get_workflow_overview(highlight_index=step_index),
+					step_index=step_index + 1,
+					total_steps=len(self.steps))
+				step_resolved.task = task_prompt
+				result = await self._run_agent_step(step_resolved)
+				if not result.is_successful():
+					logger.warning(f'Agent step {step_index + 1} failed evaluation.')
+					raise ValueError(f'Agent step {step_index + 1} failed evaluation.')
+			except Exception as e:
+				if self.fallback_to_agent:
+					logger.warning(f'Agent step {step_index + 1} failed: {e}. Attempting fallback with agent.')
+					if self.llm is None:
+						raise ValueError('Cannot fall back to agent: LLM instance required.')
+					result = await self._fallback_to_agent(step_resolved, step_index, e)
+					if not result.is_successful():
+						raise ValueError(f'Agent step {step_index + 1} failed even after fallback')
+				else:
+					raise ValueError(f'Agent step {step_index + 1} failed: {e}')
 
 		return result
 
-	async def run_step(self, step_index: int, inputs: dict[str, Any] | None = None) -> Any:
+	# --- Convert all extracted stuff to final output model ---
+	async def _convert_results_to_output_model(
+		self,
+		results: List[ActionResult | AgentHistoryList],
+		output_model: type[T],
+	) -> T:
+		"""Convert workflow results to a specified output model.
+
+		Filters ActionResults with extracted_content, then uses LangChain to parse
+		all extracted texts into the structured output model.
+
+		Args:
+			results: List of workflow step results
+			output_model: Target Pydantic model class to convert to
+
+		Returns:
+			An instance of the specified output model
+		"""
+		if not results:
+			raise ValueError('No results to convert')
+
+		if self.llm is None:
+			raise ValueError('LLM is required for structured output conversion')
+
+		# Extract all content from ActionResults
+		extracted_contents = []
+
+		for result in results:
+			if isinstance(result, ActionResult) and result.extracted_content:
+				extracted_contents.append(result.extracted_content)
+			# TODO: this might be incorrect; but it helps A LOT if extract fucks up and only the agent is able to solve it
+			elif isinstance(result, AgentHistoryList):
+				# Check the agent history for any extracted content
+				for item in result.history:
+					for action_result in item.result:
+						if action_result.extracted_content:
+							extracted_contents.append(action_result.extracted_content)
+
+		if not extracted_contents:
+			raise ValueError('No extracted content found in workflow results')
+
+		# Combine all extracted contents
+		combined_text = '\n\n'.join(extracted_contents)
+
+		messages: list[BaseMessage] = [
+			AIMessage(content=STRUCTURED_OUTPUT_PROMPT),
+			HumanMessage(content=combined_text),
+		]
+
+		chain = self.llm.with_structured_output(output_model)
+		chain_result: T = await chain.ainvoke(messages)  # type: ignore
+
+		return chain_result
+
+	async def run_step(self, step_index: int, inputs: dict[str, Any] | None = None):
 		"""Run a *single* workflow step asynchronously and return its result.
 
 		Parameters
@@ -398,7 +510,7 @@ class Workflow:
 			else:
 				self.context.update(runtime_inputs)
 
-		async with self.browser_context:
+		async with self.browser:
 			raw_step_cfg = self.steps[step_index]
 			step_resolved = self._resolve_placeholders(raw_step_cfg)
 			result = await self._execute_step(step_index, step_resolved)
@@ -411,10 +523,25 @@ class Workflow:
 		# await self.browser.close() # <-- Commented out for testing
 		return result
 
-	async def run(self, inputs: dict[str, Any] | None = None, close_browser_at_end: bool = True) -> List[Any]:
+	async def run(
+		self,
+		inputs: dict[str, Any] | None = None,
+		close_browser_at_end: bool = True,
+		cancel_event: asyncio.Event | None = None,
+		output_model: type[T] | None = None,
+	) -> WorkflowRunOutput[T]:
 		"""Execute the workflow asynchronously using step dictionaries.
 
 		@dev This is the main entry point for the workflow.
+
+		Args:
+			inputs: Optional dictionary of workflow inputs
+			close_browser_at_end: Whether to close the browser when done
+			cancel_event: Optional event to signal cancellation
+			output_model: Optional Pydantic model class to convert results to
+
+		Returns:
+			Either WorkflowRunOutput containing all step results or an instance of output_model if provided
 		"""
 		runtime_inputs = inputs or {}
 		# 1. Validate inputs against definition
@@ -422,12 +549,18 @@ class Workflow:
 		# 2. Initialize context with validated inputs
 		self.context = runtime_inputs.copy()  # Start with a fresh context
 
-		results: List[Any] = []
+		results: List[ActionResult | AgentHistoryList] = []
 
-		await self.browser_context.__aenter__()
+		await self.browser.start()
 		try:
 			for step_index, step_dict in enumerate(self.steps):  # self.steps now holds dictionaries
 				await asyncio.sleep(0.1)
+				await self.browser._wait_for_stable_network()
+
+				# Check if cancellation was requested
+				if cancel_event and cancel_event.is_set():
+					logger.info('Cancellation requested - stopping workflow execution')
+					break
 
 				# Use description from the step dictionary
 				step_description = step_dict.description or 'No description provided'
@@ -442,19 +575,19 @@ class Workflow:
 				# Persist outputs using the resolved step dictionary
 				self._store_output(step_resolved, result)
 				logger.info(f'--- Finished Step {step_index + 1} ---\n')
+
+			# Convert results to output model if requested
+			output_model_result: T | None = None
+			if output_model:
+				output_model_result = await self._convert_results_to_output_model(results, output_model)
+
 		finally:
+			# Clean-up browser after finishing workflow
 			if close_browser_at_end:
-				# Ensure __aexit__ is called with appropriate args for exception handling if needed
-				# For simplicity, assuming no exception to pass: exc_type, exc_val, exc_tb = None, None, None
-				# wait 3 seconds before closing the browser
-				await asyncio.sleep(3)
-				await self.browser_context.__aexit__(None, None, None)
+				self.browser.browser_profile.keep_alive = False
+				await self.browser.close()
 
-		# Clean-up browser after finishing workflow
-		if close_browser_at_end:
-			await self.browser.close()
-
-		return results
+		return WorkflowRunOutput(step_results=results, output_model=output_model_result)
 
 	# ------------------------------------------------------------------
 	# LangChain tool wrapper
